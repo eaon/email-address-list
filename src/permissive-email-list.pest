@@ -1,0 +1,76 @@
+WS = _{ " " | "\t" }
+NL = _{ "\n" | "\r" }
+
+all = { ( group | contact_list | garbage ) }
+
+garbage = @{ (!(NL) ~ ANY)+ }
+
+contact_list = {
+    contact ~ (WS* ~ "," ~ WS* ~ contact)* |
+    "," ~ contact ~ (WS* ~ "," ~ WS* ~ contact)*
+}
+
+group = {
+    name ~ WS* ~ ":" ~ WS* ~ ";" |
+    name ~ WS* ~ ":" ~ WS* ~ "<" ~ WS* ~ ">" ~ WS* ~ ";" |
+    name ~ WS* ~ ":" ~ WS* ~ contact_list ~ WS* ~ ";" |
+    "<" ~ name ~ WS* ~ ":" ~ WS* ~ ";" ~ WS* ~ ">" |
+    "<" ~ name ~ WS* ~ ":" ~ "<" ~ WS* ~ ">" ~ WS* ~ ";" ~ WS* ~ ">" |
+    "<" ~ name ~ WS* ~ ":" ~ WS* ~ contact_list ~ WS* ~ ";" ~ WS* ~ ">"
+}
+
+name = {
+    WS* ~ "\"" ~ escaped ~ "\"" |
+    WS* ~ clear
+}
+
+email_angle = {
+    WS* ~ "<" ~ email ~ ","? ~ ">" ~ WS*
+}
+
+mailbox_angle = {
+    WS* ~ "<" ~ mailbox ~ ","? ~ ">" ~ WS*
+}
+
+contact = {
+    email |
+    email_angle |
+    name ~ email_angle |
+    name ~ WS* ~ "(" ~ comment* ~ ")" ~ WS* ~ email_angle |
+    "\"" ~ email ~ "\"" |
+    malformed ~ email_angle |
+    malformed ~ mailbox_angle |
+    mailbox |
+    (" " | "<" | ">")* ~ email
+ }
+
+email = @{ local+ ~ "@" ~ domain+ ~ ("." ~ domain+)+ }
+
+mailbox = @{ local+ ~ "@" ~ domain+ }
+
+local = {
+    "\"" ~ escaped ~ "\"" |
+    (!("@" | "<" | ">" | ":" | "," | WS) ~ ANY)+
+}
+
+domain = {
+    !("@" | "\\" | "[" | "]" | "<" | ">" | "," | "." | "\"" | "'" | ";" | WS |
+      NL ) ~ ANY
+}
+
+escaped = @{
+    (!("\\" | "\"" | NL) ~ ANY |
+     "\\" ~ ANY)*
+}
+
+clear = @{
+    (!("@" | ":" | "<" | ">" | "\"" | "(" | ")" | "," | "[" | "]") ~ ANY)+
+}
+
+malformed = @{
+    (clear | "(" | ")" | "[" | "]" | "\"" | ":" | "," | "@")+
+}
+
+comment = @{
+    (!("(" | ")" | NL) ~ ANY)+
+}

@@ -1,0 +1,8 @@
+[package]
+name = "rfc6532_ish_contacts"
+version = "0.1.0"
+authors = ["eaon <eaon@mit.edu>"]
+
+[dependencies]
+pest = "2"
+pest_derive = "2"
