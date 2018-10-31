@@ -1,0 +1,9 @@
+Garbage:      Michael Zeltner <m@niij.org>, luck@dresden.dolls, "Something"      <aaaa@what.com>, Ötsi <w@oow.co,>;
+"RFC5322::Still a pain in 2018": "Example; Email: Add@ress.es" <for@real.example.com>, "messy@example.net", Very (Invalid) Messy  <horrible@formatting.example.org>;
+,koordination@netznetz.net, Kunasek; Heinzi <heinzi@example.org>, <this@is.hell>
+A Group:groupmember1@example.org,"Member 2" <member2@example.org>, "3, Member" <member3@example.org>;
+Last Name, First Name <email@addre.ss>, another@one.two
+Versteckte-Empfaenger:;
+Undisclosed-Recipients: <>;
+<Undisclosed-Recipients: <>;>
+<Undisclosed-Recipients:;>

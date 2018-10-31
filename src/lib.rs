@@ -9,14 +9,14 @@ use pest::Parser;
 #[grammar="permissive-email-list.pest"]
 pub struct ContactListParser;
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Default)]
 pub struct Contact {
     name: Option<String>,
     email: Option<String>
 }
 
 impl Contact {
-    pub fn new() -> Contact {
+    pub fn new() -> Self {
         Contact { name: None, email: None }
     }
 
@@ -34,7 +34,9 @@ impl Contact {
     }
 
     pub fn set_name(&mut self, name: &str) {
-        self.name = Some(name.trim().to_string());
+        if name != "" {
+            self.name = Some(name.trim().to_string());
+        }
     }
 
     pub fn set_email(&mut self, email: &str) {
@@ -104,10 +106,9 @@ pub fn parse_contact_list(contact_list: &str) -> Vec<Contact> {
             // a name (i.e. a contact that can't be replied to without a
             // Reply-To header)
             Rule::garbage => {
-                println!("{}", pair.as_str());
                 ct.set_name(pair.as_str());
             },
-            _ => {}
+            _ => { }
         }
         if ct.any_some() {
             contacts.push(ct);
