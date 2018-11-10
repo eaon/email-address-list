@@ -6,8 +6,8 @@ use pest::Parser;
 use std::convert::AsRef;
 
 #[derive(Parser)]
-#[grammar = "permissive-email-list.pest"]
-pub struct ContactListParser;
+#[grammar = "../grammars/permissive.pest"]
+pub struct AddressListParser;
 
 #[derive(Debug, Clone, Default)]
 pub struct Contact {
@@ -123,7 +123,7 @@ where
         None => return Ok(contacts),
     };
 
-    let pairs = ContactListParser::parse(Rule::all, contact_list);
+    let pairs = AddressListParser::parse(Rule::all, contact_list);
     for pair in pairs?.flatten() {
         let mut ct = Contact::new();
         match pair.as_rule() {

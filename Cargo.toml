@@ -1,5 +1,5 @@
 [package]
-name = "rfc6532_ish_contacts"
+name = "email-address-list"
 version = "0.1.0"
 authors = ["eaon <eaon@mit.edu>"]
 
