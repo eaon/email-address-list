@@ -2,56 +2,81 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
-use std::convert::AsRef;
 use pest::Parser;
-
+use std::convert::AsRef;
 
 #[derive(Parser)]
-#[grammar="permissive-email-list.pest"]
+#[grammar = "permissive-email-list.pest"]
 pub struct ContactListParser;
 
-#[derive(Debug,Clone,Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Contact {
     pub name: Option<String>,
     pub email: Option<String>,
-    pub comment: Option<String>
+    pub comment: Option<String>,
 }
+
+#[derive(Debug)]
+pub enum Error {
+    PestRuleError(pest::error::Error<Rule>),
+    UnspecifiedError,
+}
+
+impl std::convert::From<pest::error::Error<Rule>> for Error {
+    fn from(s: pest::error::Error<Rule>) -> Error {
+        Error::PestRuleError(s)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl Contact {
     pub fn new() -> Self {
-        Contact { name: None, email: None, comment: None }
+        Default::default()
     }
 
-    pub fn new_with<T: AsRef<str>>(name: Option<T>, email: Option<T>,
-                    comment: Option<T>) ->  Contact {
-        Contact {
-            name: match name {
-                Some(n) => Some(n.as_ref().to_string()),
-                None => None
-            },
-            email: match email {
-                Some(e) => Some(e.as_ref().to_string()),
-                None => None
-            },
-            comment: match comment {
-                Some(c) => Some(c.as_ref().to_string()),
-                None => None
-            }
+    pub fn new_with<T>(
+        name: Option<T>,
+        email: Option<T>,
+        comment: Option<T>,
+    ) -> Contact
+    where
+        T: AsRef<str>,
+    {
+        let mut contact = Contact::new();
+        if let Some(n) = name {
+            contact.set_name(n);
         }
+        if let Some(e) = email {
+            contact.set_email(e);
+        }
+        if let Some(c) = comment {
+            contact.set_comment(c);
+        }
+        contact
     }
 
-    pub fn set_name<T: AsRef<str>>(&mut self, name: T) {
+    pub fn set_name<T>(&mut self, name: T)
+    where
+        T: AsRef<str>,
+    {
         let name_r = name.as_ref();
         if name_r != "" {
             self.name = Some(name_r.trim().to_string());
         }
     }
 
-    pub fn set_email<T: AsRef<str>>(&mut self, email: T) {
+    pub fn set_email<T>(&mut self, email: T)
+    where
+        T: AsRef<str>,
+    {
         self.email = Some(email.as_ref().to_string());
     }
 
-    pub fn set_comment<T: AsRef<str>>(&mut self, comment: T) {
+    pub fn set_comment<T>(&mut self, comment: T)
+    where
+        T: AsRef<str>,
+    {
         let comment_r = comment.as_ref();
         if comment_r != "" {
             self.comment = Some(comment_r.to_string());
@@ -69,81 +94,81 @@ impl std::cmp::PartialEq for Contact {
     }
 }
 
-trait DeepEq<Rhs = Self> {
+pub trait DeepEq<Rhs = Self> {
     fn deep_eq(&self, other: &Rhs) -> bool;
 }
 
 impl DeepEq for Contact {
     fn deep_eq(&self, other: &Contact) -> bool {
-        self.email == other.email &&
-        self.name == other.name &&
-        self.comment == other.comment
+        self.email == other.email
+            && self.name == other.name
+            && self.comment == other.comment
     }
 }
 
-pub fn parse_contact_list<T: AsRef<str>>(contact_list: Option<T>) ->
-       Vec<Contact> {
+pub fn parse_contact_list<T>(contact_list: &Option<T>) -> Result<Vec<Contact>>
+where
+    T: AsRef<str>,
+{
     let mut contacts = Vec::<Contact>::new();
 
-    let contact_list_u: T;
-    let contact_list_r: &str;
-
-    match contact_list {
-        Some(c) => {
-            contact_list_u = c;
-            contact_list_r = contact_list_u.as_ref();
-            if contact_list_r == "" {
-                return contacts;
+    let contact_list = match contact_list {
+        Some(ref c) => {
+            let cl = c.as_ref();
+            if cl == "" {
+                return Ok(contacts);
             }
+            cl
         }
-        None => return contacts
-    }
+        None => return Ok(contacts),
+    };
 
-    let pairs = ContactListParser::parse(Rule::all, contact_list_r);
-    for pair in pairs.unwrap().flatten() {
+    let pairs = ContactListParser::parse(Rule::all, contact_list);
+    for pair in pairs?.flatten() {
         let mut ct = Contact::new();
         match pair.as_rule() {
             Rule::contact => {
                 for inner in pair.into_inner() {
                     match inner.as_rule() {
-                        Rule::name => ct.set_name(inner.into_inner()
-                                                       .next()
-                                                       .unwrap()
-                                                       .as_str()),
+                        Rule::name => match inner.into_inner().next() {
+                            Some(s) => ct.set_name(s.as_str()),
+                            None => return Err(Error::UnspecifiedError),
+                        },
                         Rule::email => ct.set_email(inner.as_str()),
-                        Rule::email_angle => ct.set_email(inner.into_inner()
-                                                               .next()
-                                                               .unwrap()
-                                                               .as_str()),
+                        Rule::email_angle => match inner.into_inner().next() {
+                            Some(s) => ct.set_email(s.as_str()),
+                            None => return Err(Error::UnspecifiedError),
+                        },
                         Rule::comment => ct.set_comment(inner.as_str()),
                         Rule::malformed => ct.set_name(inner.as_str()),
                         _ => {}
                     }
                 }
-            },
+            }
             Rule::group => {
-                ct.set_name(pair.into_inner()
-                                .next()
-                                .unwrap()
-                                .into_inner()
-                                .next()
-                                .unwrap()
-                                .as_str());
-            },
+                let inner = match pair.into_inner().next() {
+                    Some(i) => i,
+                    None => return Err(Error::UnspecifiedError),
+                };
+                match inner.into_inner().next() {
+                    Some(s) => ct.set_name(s.as_str()),
+                    None => return Err(Error::UnspecifiedError),
+                }
+            }
             // Anything that we can't turn into an actual address even by
             // rather permissive parsing, make into a Contact that only has
             // a name (i.e. a contact that can't be replied to without a
             // Reply-To header)
             Rule::garbage => {
                 ct.set_name(pair.as_str());
-            },
+            }
             _ => {}
         }
         if ct.any_some() {
             contacts.push(ct);
         }
     }
-    contacts
+    Ok(contacts)
 }
 
 #[cfg(test)]
