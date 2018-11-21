@@ -6,6 +6,8 @@ description = "Pest based parser for address-lists in email headers like to/from
 repository = "https://ghom.niij.org/eaon/email-address-list/"
 readme = "README.md"
 license = "GPL-3.0"
+keywords = ["email", "parser", "peg"]
+categories = ["parser-implementations", "email"]
 
 [dependencies]
 pest = "2"
