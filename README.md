@@ -12,5 +12,11 @@ excessively) permissive to parse even the worst garbage in everyone's inbox.
 Limited testing with real world data was done, but the grammar probably still
 needs work to catch more edge cases.
 
-Also: thanks to the [big list of naughty strings](https://github.com/minimaxir/big-list-of-naughty-strings)
-for making testing with horrible input a bit less tedious.
+Contacts may have names, email addresses and comments. Groups are parsed as
+contacts that have names but no email address or comment. They don't envelop
+another set of contacts, everything is flat.
+
+## Thanks
+
+* The [big list of naughty strings](https://github.com/minimaxir/big-list-of-naughty-strings)
+  makes testing with horrible input a bit less tedious. 🎊
