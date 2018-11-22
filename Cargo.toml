@@ -9,6 +9,10 @@ license = "GPL-3.0"
 keywords = ["email", "parser", "peg"]
 categories = ["parser-implementations", "email"]
 
+[badges]
+appveyor = { repository = "eaon/email-address-list", service = "git" }
+maintenance = { status = "actively-developed" }
+
 [dependencies]
 pest = "2"
 pest_derive = "2"
