@@ -1,13 +1,12 @@
 WS = _{ " " | "\t" }
 NL = _{ "\n" | "\r" }
 
-all = { ( group | contact_list | garbage ) }
+all = { ( group | contact_list ) }
 
-garbage = @{ (!(NL) ~ ANY)* }
+garbage = @{ (!(NL | ",") ~ ANY)* }
 
 contact_list = {
-    contact ~ (WS* ~ "," ~ WS* ~ contact)* |
-    "," ~ contact ~ (WS* ~ "," ~ WS* ~ contact)*
+    ","? ~ contact ~ (WS* ~ "," ~ WS* ~ contact)* ~ ","?
 }
 
 group = {
@@ -39,8 +38,10 @@ contact = {
     "\"" ~ email ~ "\"" |
     (" " | "<" | ">" | ",")* ~ email |
     malformed ~ email_angle |
-    malformed ~ mailbox_angle |
-    mailbox
+    name ~ WS* ~ mailbox_angle |
+    malformed ~ WS* ~ mailbox_angle |
+    mailbox |
+    garbage
  }
 
 email = @{ local+ ~ "@" ~ domain+ ~ ("." ~ domain+)+ }

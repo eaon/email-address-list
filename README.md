@@ -2,7 +2,7 @@
 
 [![Build status](https://img.shields.io/appveyor/ci/eaon/email-address-list.svg)](https://ci.appveyor.com/project/eaon/email-address-list)
 [![Crate version](https://img.shields.io/crates/v/email-address-list.svg)](https://crates.io/crates/email-address-list)
-![License](https://img.shields.io/crates/l/email-address-list.svg)
+[![License](https://img.shields.io/crates/l/email-address-list.svg)](https://ghom.niij.org/eaon/email-address-list/src/master/LICENSE)
 
 [Pest based parser](https://pest.rs/) picking out "contacts" from email address
 lists found in headers such as `from`, `to`, `cc`, etc.

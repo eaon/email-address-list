@@ -30,4 +30,5 @@ test_script:
 - sh: >-
     for CHANNEL in "stable" "beta" "nightly"; do
         rustup run $CHANNEL cargo build --all-features --verbose --all
+        rustup run $CHANNEL cargo test --all-features --verbose --all
     done
