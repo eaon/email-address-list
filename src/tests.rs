@@ -48,7 +48,7 @@ fn naughty_input() {
 }
 
 #[test]
-fn deep_eq() {
+fn eq() {
     let als = vec![
         AddressList::from(Group::new_with(
             "Garbage",
@@ -116,8 +116,14 @@ fn deep_eq() {
     match address_lists_from_file("tests/deep_eq.txt") {
         Ok(address_lists) => {
             for (i, al) in address_lists.iter().enumerate() {
-                println!("{:?}\n{:?}", &al, &als[i]);
+                let j = match i {
+                    0...5 => i + 3,
+                    _ => i - 3,
+                };
+                println!("{:?}\n{:?}\n{:?}", &al, &als[i], &als[j]);
                 assert!(al.deep_eq(&als[i]));
+                assert_eq!(al, &als[i]);
+                assert!(al != &als[j]);
             }
         }
         Err(e) => {

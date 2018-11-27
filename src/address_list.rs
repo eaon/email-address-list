@@ -4,6 +4,53 @@ pub enum AddressList {
     Group(Group),
 }
 
+impl AddressList {
+    pub fn is_group(&self) -> bool {
+        match self {
+            AddressList::Group(_) => true,
+            _ => false,
+        }
+    }
+
+    fn eq_base(&self, other: &Self) -> bool {
+        if self.is_group() != other.is_group() {
+            return false;
+        }
+        let contacts = match self {
+            AddressList::Contacts(c) => c.len(),
+            AddressList::Group(g) => g.contacts.len(),
+        };
+        let other_contacts = match other {
+            AddressList::Contacts(c) => c.len(),
+            AddressList::Group(g) => {
+                // We've already tested for is_group() above
+                if self.group_name().unwrap() != g.name {
+                    return false;
+                }
+                g.contacts.len()
+            }
+        };
+        if contacts != other_contacts {
+            return false;
+        }
+        true
+    }
+
+    pub fn group_name(&self) -> Option<String> {
+        match self {
+            AddressList::Group(g) => Some(g.name.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn contacts(&self) -> Contacts {
+        match self {
+            AddressList::Contacts(c) => c.clone(),
+            AddressList::Group(g) => g.contacts.clone(),
+        }
+    }
+}
+
 impl From<Contacts> for AddressList {
     fn from(contacts: Contacts) -> AddressList {
         AddressList::Contacts(contacts)
@@ -164,89 +211,31 @@ impl EmailContact {
 // derive(PartialEq)
 impl std::cmp::PartialEq for AddressList {
     fn eq(&self, other: &AddressList) -> bool {
-        let contacts: &Contacts;
-        let other_contacts: &Contacts;
-        let mut groupname: &String = &"".to_string();
-        let mut other_groupname: &String = &"".to_string();
-        if match self {
-            AddressList::Contacts(c) => {
-                contacts = c;
-                0
-            }
-            AddressList::Group(g) => {
-                contacts = &g.contacts;
-                groupname = &g.name;
-                1
-            }
-        } == match other {
-            AddressList::Contacts(c) => {
-                other_contacts = c;
-                0
-            }
-            AddressList::Group(g) => {
-                other_contacts = &g.contacts;
-                other_groupname = &g.name;
-                1
-            }
-        } {
-            for (i, contact) in contacts.iter().enumerate() {
-                if contact != &other_contacts[i] {
-                    return false;
-                }
-            }
-            if let AddressList::Group(_) = self {
-                if groupname != other_groupname {
-                    return false;
-                }
-            }
-            true
-        } else {
-            false
+        if !self.eq_base(other) {
+            return false;
         }
+        let other_contacts = other.contacts();
+        for (i, contact) in self.contacts().iter().enumerate() {
+            if contact != &other_contacts[i] {
+                return false;
+            }
+        }
+        true
     }
 }
 
 impl DeepEq for AddressList {
     fn deep_eq(&self, other: &AddressList) -> bool {
-        let contacts: &Contacts;
-        let other_contacts: &Contacts;
-        let mut groupname: &String = &"".to_string();
-        let mut other_groupname: &String = &"".to_string();
-        if match self {
-            AddressList::Contacts(c) => {
-                contacts = c;
-                0
-            }
-            AddressList::Group(g) => {
-                contacts = &g.contacts;
-                groupname = &g.name;
-                1
-            }
-        } == match other {
-            AddressList::Contacts(c) => {
-                other_contacts = c;
-                0
-            }
-            AddressList::Group(g) => {
-                other_contacts = &g.contacts;
-                other_groupname = &g.name;
-                1
-            }
-        } {
-            for (i, contact) in contacts.iter().enumerate() {
-                if !contact.deep_eq(&other_contacts[i]) {
-                    return false;
-                }
-            }
-            if let AddressList::Group(_) = self {
-                if groupname != other_groupname {
-                    return false;
-                }
-            }
-            true
-        } else {
-            false
+        if !self.eq_base(other) {
+            return false;
         }
+        let other_contacts = other.contacts();
+        for (i, contact) in self.contacts().iter().enumerate() {
+            if !contact.deep_eq(&other_contacts[i]) {
+                return false;
+            }
+        }
+        true
     }
 }
 
