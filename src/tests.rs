@@ -2,7 +2,7 @@ use super::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-fn address_list_from_file(filename: &str) -> Result<Vec<AddressList>> {
+fn address_lists_from_file(filename: &str) -> Result<Vec<AddressList>> {
     let mut address_lists = Vec::<AddressList>::new();
     match File::open(filename) {
         Ok(f) => {
@@ -22,89 +22,113 @@ fn address_list_from_file(filename: &str) -> Result<Vec<AddressList>> {
     Ok(address_lists)
 }
 
-//#[test]
-fn naughty_input() -> Result<()> {
-    let address_lists = address_list_from_file("tests/naughty-strings.txt")?;
+#[test]
+fn naughty_input() {
+    let address_lists =
+        address_lists_from_file("tests/naughty-strings.txt").unwrap();
     for address_list in address_lists {
-        println!("{:?}", address_list);
-        assert!(false);
+        match address_list {
+            AddressList::Contacts(c) => {
+                for contact in c {
+                    match contact {
+                        Contact::Garbage(_) => {}
+                        _ => {
+                            println!("{:?}", contact);
+                            assert!(false);
+                        }
+                    }
+                }
+            }
+            _ => {
+                println!("{:?}", address_list);
+                assert!(false);
+            }
+        }
     }
-    Ok(())
 }
 
 #[test]
 fn deep_eq() {
-//    let als = vec![
-//        AddressList::from(
-//            Group::new_with(
-//                "Garbage",
-//                vec![
-//                    Contact::new_with(
-//                        "m@niij.org",
-//                        Some("Michael Zeltner"),
-//                        None
-//                    )
-//                ]
-//            )),
-//    ];
-    match address_list_from_file("tests/deep_eq.txt") {
+    let als = vec![
+        AddressList::from(Group::new_with(
+            "Garbage",
+            vec![
+                Contact::new_with("m@niij.org", Some("Michael Zeltner"), None),
+                Contact::new_with("luck@dresden.dolls", None, None),
+                Contact::new_with("aaaa@what.com", Some("Something"), None),
+                Contact::new_with("w@oow.co", Some("Ötsi"), None),
+            ],
+        )),
+        AddressList::from(Group::new_with(
+            "RFC5322::Still a pain in 2018",
+            vec![
+                Contact::new_with(
+                    "for@real.example.com",
+                    Some("Example; Email: Add@ress.es"),
+                    None,
+                ),
+                Contact::new_with("messy@example.net", None, None),
+                Contact::new_with(
+                    "horrible@formatting.example.org",
+                    Some("Very (Invalid) Messy"),
+                    None,
+                ),
+            ],
+        )),
+        AddressList::from(vec![
+            Contact::new_with("koordination@netznetz.net", None, None),
+            Contact::new_with(
+                "heinzi@example.org",
+                Some("Kunasek; Heinzi"),
+                None,
+            ),
+            Contact::new_with("this@is.hell", None, None),
+        ]),
+        AddressList::from(Group::new_with(
+            "A Group",
+            vec![
+                Contact::new_with("groupmember1@example.org", None, None),
+                Contact::new_with(
+                    "member2@example.org",
+                    Some("Member 2"),
+                    None,
+                ),
+                Contact::new_with(
+                    "list@example.org",
+                    Some("3, Member"),
+                    Some("via example mailing list"),
+                ),
+            ],
+        )),
+        AddressList::from(vec![
+            Contact::new_with(
+                "email@addre.ss",
+                Some("Last Name, First Name"),
+                None,
+            ),
+            Contact::new_with("another@one.two", None, None),
+        ]),
+        AddressList::from(Group::new_with("Versteckte-Empfaenger", vec![])),
+        AddressList::from(Group::new_with("Undisclosed-Recipients", vec![])),
+        AddressList::from(Group::new_with("Undisclosed-Recipients", vec![])),
+        AddressList::from(Group::new_with("Undisclosed-Recipients", vec![])),
+    ];
+    match address_lists_from_file("tests/deep_eq.txt") {
         Ok(address_lists) => {
-            for contact in address_lists {
-                println!("{:?}", contact);
-                //let cmp = &cs[i];
-                //println!("{:?}\n{:?}", contact, cmp);
-                //println!("{:?}", contact.name == cmp.name);
-                //println!("{:?}", contact.email == cmp.email);
-                //assert!(contact.deep_eq(&cmp));
+            for (i, al) in address_lists.iter().enumerate() {
+                println!("{:?}\n{:?}", &al, &als[i]);
+                assert!(al.deep_eq(&als[i]));
             }
         }
         Err(e) => {
-            println!("{}", match e {
-                Error::UnexpectedError(e) => e,
-                _ => format!("{:?}", e),
-            });
+            println!(
+                "{}",
+                match e {
+                    Error::UnexpectedError(e) => e,
+                    _ => format!("{:?}", e),
+                }
+            );
+            assert!(false);
         }
     }
-    assert!(false);
-//        Contact::new_with(Some("Michael Zeltner"), Some("m@niij.org"), None),
-//        Contact::new_with(None, Some("luck@dresden.dolls"), None),
-//        Contact::new_with(Some("Something"), Some("aaaa@what.com"), None),
-//        Contact::new_with(Some("Ötsi"), Some("w@oow.co"), None),
-//        Contact::new_with(Some("RFC5322::Still a pain in 2018"), None, None),
-//        Contact::new_with(
-//            Some("Example; Email: Add@ress.es"),
-//            Some("for@real.example.com"),
-//            None,
-//        ),
-//        Contact::new_with(None, Some("messy@example.net"), None),
-//        Contact::new_with(
-//            Some("Very (Invalid) Messy"),
-//            Some("horrible@formatting.example.org"),
-//            None,
-//        ),
-//        Contact::new_with(None, Some("koordination@netznetz.net"), None),
-//        Contact::new_with(
-//            Some("Kunasek; Heinzi"),
-//            Some("heinzi@example.org"),
-//            None,
-//        ),
-//        Contact::new_with(None, Some("this@is.hell"), None),
-//        Contact::new_with(Some("A Group"), None, None),
-//        Contact::new_with(None, Some("groupmember1@example.org"), None),
-//        Contact::new_with(Some("Member 2"), Some("member2@example.org"), None),
-//        Contact::new_with(
-//            Some("3, Member"),
-//            Some("list@example.org"),
-//            Some("via example mailing list"),
-//        ),
-//        Contact::new_with(
-//            Some("Last Name, First Name"),
-//            Some("email@addre.ss"),
-//            None,
-//        ),
-//        Contact::new_with(None, Some("another@one.two"), None),
-//        Contact::new_with(Some("Versteckte-Empfaenger"), None, None),
-//        Contact::new_with(Some("Undisclosed-Recipients"), None, None),
-//        Contact::new_with(Some("Undisclosed-Recipients"), None, None),
-//        Contact::new_with(Some("Undisclosed-Recipients"), None, None),
 }

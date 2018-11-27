@@ -39,7 +39,7 @@ where
     Ok(Some(parse_pairs(AddressListParser::parse(
         Rule::all,
         match contact_list {
-            Some(ref c) => match c.as_ref() {
+            Some(ref c) => match c.as_ref().trim() {
                 "" => return Ok(None),
                 s => s,
             },
@@ -83,7 +83,14 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                             }
                         }
                         Rule::comment => c.set_comment(inner.as_str()),
-                        _ => return Err(invalid_nesting("contact")),
+                        Rule::garbage => {
+                            return Ok(AddressList::from(vec![Contact::from(
+                                Garbage::from(inner.as_str()),
+                            )]));
+                        }
+                        _ => {
+                            return Err(invalid_nesting("contact"));
+                        }
                     }
                 }
                 contacts.push(Contact::from(c));
@@ -93,7 +100,8 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                 for inner in pair.into_inner() {
                     match inner.as_rule() {
                         Rule::name => {
-                            group.name = inner.as_str().to_string();
+                            group.name =
+                                inner.into_inner().as_str().to_string();
                         }
                         Rule::contact_list => {
                             group.contacts =
@@ -106,11 +114,6 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                     }
                 }
                 return Ok(AddressList::from(group));
-            }
-            Rule::garbage => {
-                return Ok(AddressList::from(vec![Contact::from(
-                    Garbage::from(pair.as_str()),
-                )]));
             }
             Rule::all => return parse_pairs(pair.into_inner()),
             Rule::contact_list => return parse_pairs(pair.into_inner()),

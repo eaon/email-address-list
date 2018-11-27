@@ -1,5 +1,4 @@
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum AddressList {
     Contacts(Contacts),
     Group(Group),
@@ -32,7 +31,6 @@ impl From<EmailContact> for Contact {
 pub type Garbage = String;
 pub type Contacts = Vec<Contact>;
 
-
 impl<T> From<T> for Group
 where
     T: AsRef<str>,
@@ -45,7 +43,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Contact {
     Contact(EmailContact),
     Garbage(Garbage),
@@ -62,7 +60,7 @@ impl Contact {
     pub fn name(&self) -> Option<String> {
         match self {
             Contact::Contact(c) => c.name.clone(),
-            Contact::Garbage(g) => Some(g.clone())
+            Contact::Garbage(g) => Some(g.clone()),
         }
     }
 
@@ -88,7 +86,7 @@ pub struct EmailContact {
     pub comment: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default)]
 pub struct Group {
     pub name: String,
     pub contacts: Contacts,
@@ -105,7 +103,7 @@ impl Group {
     {
         Group {
             name: name.as_ref().to_string(),
-            contacts
+            contacts,
         }
     }
 }
@@ -139,7 +137,7 @@ impl EmailContact {
         T: AsRef<str>,
     {
         let name_r = name.as_ref();
-        if name_r.trim() != ""{
+        if name_r.trim() != "" {
             self.name = Some(name_r.trim().to_string());
         }
     }
@@ -162,14 +160,118 @@ impl EmailContact {
     }
 }
 
+// XXX this seems supremely dirty, but Vec<Contacts> doesn't allow using
+// derive(PartialEq)
+impl std::cmp::PartialEq for AddressList {
+    fn eq(&self, other: &AddressList) -> bool {
+        let contacts: &Contacts;
+        let other_contacts: &Contacts;
+        let mut groupname: &String = &"".to_string();
+        let mut other_groupname: &String = &"".to_string();
+        if match self {
+            AddressList::Contacts(c) => {
+                contacts = c;
+                0
+            }
+            AddressList::Group(g) => {
+                contacts = &g.contacts;
+                groupname = &g.name;
+                1
+            }
+        } == match other {
+            AddressList::Contacts(c) => {
+                other_contacts = c;
+                0
+            }
+            AddressList::Group(g) => {
+                other_contacts = &g.contacts;
+                other_groupname = &g.name;
+                1
+            }
+        } {
+            for (i, contact) in contacts.iter().enumerate() {
+                if contact != &other_contacts[i] {
+                    return false;
+                }
+            }
+            if let AddressList::Group(_) = self {
+                if groupname != other_groupname {
+                    return false;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl DeepEq for AddressList {
+    fn deep_eq(&self, other: &AddressList) -> bool {
+        let contacts: &Contacts;
+        let other_contacts: &Contacts;
+        let mut groupname: &String = &"".to_string();
+        let mut other_groupname: &String = &"".to_string();
+        if match self {
+            AddressList::Contacts(c) => {
+                contacts = c;
+                0
+            }
+            AddressList::Group(g) => {
+                contacts = &g.contacts;
+                groupname = &g.name;
+                1
+            }
+        } == match other {
+            AddressList::Contacts(c) => {
+                other_contacts = c;
+                0
+            }
+            AddressList::Group(g) => {
+                other_contacts = &g.contacts;
+                other_groupname = &g.name;
+                1
+            }
+        } {
+            for (i, contact) in contacts.iter().enumerate() {
+                if !contact.deep_eq(&other_contacts[i]) {
+                    return false;
+                }
+            }
+            if let AddressList::Group(_) = self {
+                if groupname != other_groupname {
+                    return false;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+}
+
 impl std::cmp::PartialEq for EmailContact {
     fn eq(&self, other: &EmailContact) -> bool {
         self.email == other.email
     }
 }
 
+impl std::cmp::PartialEq for Contact {
+    fn eq(&self, other: &Contact) -> bool {
+        self.email() == other.email()
+    }
+}
+
 pub trait DeepEq<Rhs = Self> {
     fn deep_eq(&self, other: &Rhs) -> bool;
+}
+
+impl DeepEq for Contact {
+    fn deep_eq(&self, other: &Contact) -> bool {
+        self.email() == other.email()
+            && self.name() == other.name()
+            && self.comment() == other.comment()
+    }
 }
 
 impl DeepEq for EmailContact {

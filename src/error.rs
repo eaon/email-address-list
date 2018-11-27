@@ -1,6 +1,6 @@
 use std::convert::From;
-use std::fmt;
 use std::error;
+use std::fmt;
 use Rule;
 
 #[derive(Debug)]
