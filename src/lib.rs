@@ -1,17 +1,34 @@
 /*!
-[Pest based parser](https://pest.rs/) picking out "contacts" from email address
-lists found in headers such as `from`, `to`, `cc`, etc.
+Näive [Pest](https://pest.rs/) based parser, picking out "contacts" from email
+address lists found in headers such as `from`, `to`, `cc`, etc.
 
 This library aims to be practical rather than "correct". It is (potentially
 excessively) permissive to parse even the worst garbage in anyone's inbox.
 Limited testing with real world data has been, but the grammar that forms the
 basis for this library probably still needs work to catch more edge cases.
+
+# Example
+
+```rust
+use email_address_list::*;
+# fn main() -> error::Result<()> {
+
+let manual = AddressList::from(vec![
+        Contact::new_with("flastname@example.org", Some("Firstname Lastname"), None)
+]);
+
+let result = parse_address_list(&Some("Firstname Lastname <flastname@example.org>"))?;
+
+assert_eq!(result, manual);
+# Ok(())
+# }
+```
 */
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
-use pest::iterators::Pairs;
+use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use std::convert::AsRef;
 use std::convert::From;
@@ -20,9 +37,9 @@ use std::convert::From;
 #[grammar = "../grammars/permissive.pest"]
 pub struct AddressListParser;
 
-mod error;
+pub mod error;
 use error::Error::*;
-pub use error::*;
+use error::*;
 
 mod address_list;
 pub use address_list::*;
@@ -30,70 +47,80 @@ pub use address_list::*;
 /// Anything that we can't turn into an actual address even by rather permissive
 /// parsing, make into a Contact that only has a name (i.e. a contact that can't
 /// be replied to without a Reply-To header)
-pub fn parse_address_list<T>(
-    contact_list: &Option<T>,
-) -> Result<Option<AddressList>>
+pub fn parse_address_list<T>(address_list: &Option<T>) -> Result<AddressList>
 where
     T: AsRef<str>,
 {
-    Ok(Some(parse_pairs(AddressListParser::parse(
+    let address_list = check_empty(address_list)?;
+    Ok(parse_pairs(AddressListParser::parse(
         Rule::all,
-        match contact_list {
-            Some(ref c) => match c.as_ref().trim() {
-                "" => return Ok(None),
-                s => s,
+        address_list.as_ref(),
+    )?)?)
+}
+
+pub fn parse_contact<T>(contact: &Option<T>) -> Result<Contact>
+where
+    T: AsRef<str>,
+{
+    let contact = check_empty(contact)?;
+    Ok(parse_contact_pair(match AddressListParser::parse(
+        Rule::contact,
+        contact.as_ref(),
+    )?.next()
+    {
+        Some(c) => c,
+        None => return Err(Error::Empty),
+    })?)
+}
+
+fn parse_contact_pair(pair: Pair<Rule>) -> Result<Contact> {
+    let mut c = EmailContact::new();
+    for inner in pair.into_inner() {
+        match inner.as_rule() {
+            Rule::malformed => c.set_name(inner.as_str()),
+            Rule::name => match inner.into_inner().next() {
+                Some(s) => c.set_name(s.as_str()),
+                None => return Err(invalid_empty("name")),
             },
-            None => return Ok(None),
+            Rule::email | Rule::mailbox => c.set_email(inner.as_str()),
+            Rule::email_angle | Rule::mailbox_angle => match inner
+                .into_inner()
+                .next()
+            {
+                Some(s) => c.set_email(s.as_str()),
+                None => {
+                    return Err(invalid_empty("email_angle or mailbox_angle"));
+                }
+            },
+            Rule::comment => c.set_comment(inner.as_str()),
+            Rule::garbage => {
+                return Ok(Contact::from(GarbageContact::from(inner.as_str())));
+            }
+            _ => return Err(invalid_nesting("contact")),
+        }
+    }
+    Ok(Contact::from(c))
+}
+
+fn check_empty<'a, T>(address_list: &Option<T>) -> Result<&T>
+where
+    T: AsRef<str>,
+{
+    match address_list {
+        Some(c) => match &c.as_ref().trim() {
+            &"" => Err(Error::Empty),
+            _ => Ok(c),
         },
-    )?)?))
+        None => return Err(Error::Empty),
+    }
 }
 
 fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
-    fn invalid_nesting(rule: &str) -> Error {
-        UnexpectedError(format!("Invalid nesting in {} rule", rule))
-    }
-
-    fn invalid_empty(rule: &str) -> Error {
-        UnexpectedError(format!("{} cannot be empty", rule))
-    }
-
     let mut contacts = Contacts::new();
     for pair in pairs {
         match pair.as_rule() {
             Rule::contact => {
-                let mut c = EmailContact::new();
-                for inner in pair.into_inner() {
-                    match inner.as_rule() {
-                        Rule::malformed => c.set_name(inner.as_str()),
-                        Rule::name => match inner.into_inner().next() {
-                            Some(s) => c.set_name(s.as_str()),
-                            None => return Err(invalid_empty("name")),
-                        },
-                        Rule::email | Rule::mailbox => {
-                            c.set_email(inner.as_str())
-                        }
-                        Rule::email_angle | Rule::mailbox_angle => {
-                            match inner.into_inner().next() {
-                                Some(s) => c.set_email(s.as_str()),
-                                None => {
-                                    return Err(invalid_empty(
-                                        "email_angle or mailbox_angle",
-                                    ));
-                                }
-                            }
-                        }
-                        Rule::comment => c.set_comment(inner.as_str()),
-                        Rule::garbage => {
-                            return Ok(AddressList::from(vec![Contact::from(
-                                GarbageContact::from(inner.as_str()),
-                            )]));
-                        }
-                        _ => {
-                            return Err(invalid_nesting("contact"));
-                        }
-                    }
-                }
-                contacts.push(Contact::from(c));
+                contacts.push(Contact::from(parse_contact_pair(pair)?));
             }
             Rule::group => {
                 let mut group = Group::new();

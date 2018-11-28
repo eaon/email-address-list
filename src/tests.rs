@@ -9,8 +9,14 @@ fn address_lists_from_file(filename: &str) -> Result<Vec<AddressList>> {
             let mut lines = BufReader::new(f);
             let mut line = String::new();
             while lines.read_line(&mut line).unwrap() > 0 {
-                let parsed = parse_address_list(&Some(&line))?;
-                address_lists.extend(parsed);
+                if let Some(parsed) = match parse_address_list(&Some(&line)) {
+                    Ok(a) => Some(a),
+                    Err(Error::Empty) => None,
+                    Err(e) => return Err(e),
+                }
+                {
+                    address_lists.push(parsed);
+                }
                 line.clear();
             }
         }

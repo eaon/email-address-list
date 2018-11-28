@@ -7,9 +7,9 @@ pub trait DeepEq<Rhs = Self> {
 
 #[derive(Debug, Clone, Default)]
 pub struct EmailContact {
-    pub email: String,
-    pub name: Option<String>,
-    pub comment: Option<String>,
+    email: String,
+    name: Option<String>,
+    comment: Option<String>,
 }
 
 impl EmailContact {
@@ -80,6 +80,8 @@ impl DeepEq for EmailContact {
 
 pub type GarbageContact = String;
 
+///
+/// Contact::from("Random bits".to_string())
 #[derive(Clone)]
 pub enum Contact {
     Contact(EmailContact),
@@ -92,6 +94,13 @@ impl Contact {
         T: AsRef<str>,
     {
         Contact::from(EmailContact::new_with(email, name, comment))
+    }
+
+    pub fn is_garbage(&self) -> bool {
+        match self {
+            Contact::Garbage(_) => true,
+            _ => false,
+        }
     }
 
     pub fn name(&self) -> Option<String> {

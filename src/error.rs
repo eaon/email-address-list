@@ -7,11 +7,13 @@ use Rule;
 pub enum Error {
     PestRuleError(pest::error::Error<Rule>),
     UnexpectedError(String),
+    Empty,
 }
 
 impl error::Error for Error {
     fn description(&self) -> &str {
         match *self {
+            Error::Empty => "Nothing to parse",
             Error::UnexpectedError(ref e) => e,
             _ => self.description(),
         }
@@ -37,3 +39,11 @@ impl From<pest::error::Error<Rule>> for Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+pub(crate) fn invalid_nesting(rule: &str) -> Error {
+    Error::UnexpectedError(format!("Invalid nesting in {} rule", rule))
+}
+
+pub(crate) fn invalid_empty(rule: &str) -> Error {
+    Error::UnexpectedError(format!("{} cannot be empty", rule))
+}
