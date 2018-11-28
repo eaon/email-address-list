@@ -85,7 +85,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                         Rule::comment => c.set_comment(inner.as_str()),
                         Rule::garbage => {
                             return Ok(AddressList::from(vec![Contact::from(
-                                Garbage::from(inner.as_str()),
+                                GarbageContact::from(inner.as_str()),
                             )]));
                         }
                         _ => {

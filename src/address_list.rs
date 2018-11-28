@@ -1,4 +1,5 @@
 use std::cmp::PartialEq;
+use std::fmt;
 
 pub trait DeepEq<Rhs = Self> {
     fn deep_eq(&self, other: &Rhs) -> bool;
@@ -77,12 +78,12 @@ impl DeepEq for EmailContact {
     }
 }
 
-pub type Garbage = String;
+pub type GarbageContact = String;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Contact {
     Contact(EmailContact),
-    Garbage(Garbage),
+    Garbage(GarbageContact),
 }
 
 impl Contact {
@@ -123,14 +124,35 @@ impl PartialEq for Contact {
 
 impl DeepEq for Contact {
     fn deep_eq(&self, other: &Contact) -> bool {
-        self.email() == other.email() ||
-            self.name() == other.name() ||
-            self.comment() == other.comment()
+        self.email() == other.email()
+            || self.name() == other.name()
+            || self.comment() == other.comment()
     }
 }
 
-impl From<Garbage> for Contact {
-    fn from(garbage: Garbage) -> Contact {
+impl fmt::Debug for Contact {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Contact({}{}{})",
+            match self.name() {
+                Some(n) => format!("\"{}\" ", n),
+                None => "".to_string(),
+            },
+            match self.comment() {
+                Some(c) => format!("({}) ", c),
+                None => "".to_string(),
+            },
+            match self.email() {
+                Some(e) => format!("<{}>", e),
+                None => "".to_string(),
+            }
+        )
+    }
+}
+
+impl From<GarbageContact> for Contact {
+    fn from(garbage: GarbageContact) -> Contact {
         Contact::Garbage(garbage)
     }
 }
@@ -167,8 +189,9 @@ impl Group {
 
 impl PartialEq for Group {
     fn eq(&self, other: &Group) -> bool {
-        if self.name != other.name ||
-            self.contacts.len() != other.contacts.len() {
+        if self.name != other.name
+            || self.contacts.len() != other.contacts.len()
+        {
             return false;
         }
         for (i, contact) in self.contacts.iter().enumerate() {
@@ -182,8 +205,9 @@ impl PartialEq for Group {
 
 impl DeepEq for Group {
     fn deep_eq(&self, other: &Group) -> bool {
-        if self.name != other.name ||
-            self.contacts.len() != other.contacts.len() {
+        if self.name != other.name
+            || self.contacts.len() != other.contacts.len()
+        {
             return false;
         }
         for (i, contact) in self.contacts.iter().enumerate() {
