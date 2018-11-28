@@ -120,9 +120,10 @@ fn eq() {
                     0...5 => i + 3,
                     _ => i - 3,
                 };
-                println!("{:?}\n{:?}\n{:?}", &al, &als[i], &als[j]);
+                println!("== {:?}\n== {:?}", &al, &als[i]);
                 assert!(al.deep_eq(&als[i]));
                 assert_eq!(al, &als[i]);
+                println!("!= {:?}", als[j]);
                 assert!(al != &als[j]);
             }
         }
