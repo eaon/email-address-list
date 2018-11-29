@@ -10,7 +10,6 @@ pub trait DeepEq<Rhs = Self> {
 }
 
 /// Provides a unified interface for all contact relevant bits of information
-///
 pub trait ContactInfo {
     fn email(&self) -> Option<&String>;
     fn name(&self) -> Option<&String>;
@@ -313,17 +312,17 @@ impl AddressList {
         }
     }
 
-    pub fn group_name(&self) -> Option<String> {
+    pub fn group_name(&self) -> Option<&String> {
         match self {
-            AddressList::Group(g) => Some(g.name.clone()),
+            AddressList::Group(g) => Some(&g.name),
             _ => None,
         }
     }
 
-    pub fn contacts(&self) -> Contacts {
+    pub fn contacts(&self) -> &Contacts {
         match self {
-            AddressList::Contacts(c) => c.clone(),
-            AddressList::Group(g) => g.contacts.clone(),
+            AddressList::Contacts(c) => &c,
+            AddressList::Group(g) => &g.contacts,
         }
     }
 }
