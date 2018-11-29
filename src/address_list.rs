@@ -16,6 +16,22 @@ pub trait ContactInfo {
     fn comment(&self) -> Option<&String>;
 }
 
+/// Unified interface for all contact types that
+pub trait ContactMutable {
+    fn new_with<T>(required: T, optional: &[Option<T>]) -> Self
+    where
+        T: AsRef<str>;
+    fn set_name<T>(&mut self, name: T) -> bool
+    where
+        T: AsRef<str>;
+    fn set_email<T>(&mut self, email: T) -> bool
+    where
+        T: AsRef<str>;
+    fn set_comment<T>(&mut self, comment: T) -> bool
+    where
+        T: AsRef<str>;
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct EmailContact {
     email: String,
@@ -26,52 +42,6 @@ pub struct EmailContact {
 impl EmailContact {
     pub fn new() -> Self {
         Default::default()
-    }
-
-    pub fn new_with<T>(
-        email: T,
-        name: Option<T>,
-        comment: Option<T>,
-    ) -> EmailContact
-    where
-        T: AsRef<str>,
-    {
-        let mut contact = EmailContact::new();
-        contact.set_email(email);
-        if let Some(n) = name {
-            contact.set_name(n);
-        }
-        if let Some(c) = comment {
-            contact.set_comment(c);
-        }
-        contact
-    }
-
-    pub fn set_name<T>(&mut self, name: T)
-    where
-        T: AsRef<str>,
-    {
-        let name_r = name.as_ref();
-        if name_r.trim() != "" {
-            self.name = Some(name_r.trim().to_string());
-        }
-    }
-
-    pub fn set_email<T>(&mut self, email: T)
-    where
-        T: AsRef<str>,
-    {
-        self.email = email.as_ref().to_string();
-    }
-
-    pub fn set_comment<T>(&mut self, comment: T)
-    where
-        T: AsRef<str>,
-    {
-        let comment_r = comment.as_ref();
-        if comment_r != "" {
-            self.comment = Some(comment_r.to_string());
-        }
     }
 }
 
@@ -86,6 +56,56 @@ impl ContactInfo for EmailContact {
 
     fn comment(&self) -> Option<&String> {
         self.comment.as_ref()
+    }
+}
+
+impl ContactMutable for EmailContact {
+    fn new_with<T>(email: T, optional: &[Option<T>]) -> Self
+    where
+        T: AsRef<str>,
+    {
+        let mut contact = EmailContact::new();
+        contact.set_email(email);
+        if optional.len() == 1 {
+            if let Some(ref n) = optional[0] {
+                contact.set_name(n);
+            }
+        } else if optional.len() == 2 {
+            if let Some(ref c) = optional[1] {
+                contact.set_comment(c);
+            }
+        }
+        contact
+    }
+
+    fn set_name<T>(&mut self, name: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        let name = name.as_ref();
+        if name.trim() != "" {
+            self.name = Some(name.trim().to_string());
+        }
+        true
+    }
+
+    fn set_email<T>(&mut self, email: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        self.email = email.as_ref().to_string();
+        true
+    }
+
+    fn set_comment<T>(&mut self, comment: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        let comment = comment.as_ref();
+        if comment != "" {
+            self.comment = Some(comment.to_string());
+        }
+        true
     }
 }
 
@@ -122,7 +142,31 @@ impl ContactInfo for GarbageContact {
     }
 }
 
-///
+impl ContactMutable for GarbageContact {
+    fn new_with<T>(garbage: T, _: &[Option<T>]) -> Self
+    where
+        T: AsRef<str>,
+    {
+        garbage.as_ref().to_string()
+    }
+
+    fn set_name<T>(&mut self, garbage: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        self.replace_range(.., garbage.as_ref());
+        true
+    }
+
+    fn set_email<T>(&mut self, _: T) -> bool {
+        false
+    }
+
+    fn set_comment<T>(&mut self, _: T) -> bool {
+        false
+    }
+}
+
 /// Contact::from("Random bits".to_string())
 #[derive(Clone)]
 pub enum Contact {
@@ -131,13 +175,6 @@ pub enum Contact {
 }
 
 impl Contact {
-    pub fn new_with<T>(email: T, name: Option<T>, comment: Option<T>) -> Self
-    where
-        T: AsRef<str>,
-    {
-        Contact::from(EmailContact::new_with(email, name, comment))
-    }
-
     pub fn is_garbage(&self) -> bool {
         match self {
             Contact::Garbage(_) => true,
@@ -165,6 +202,45 @@ impl ContactInfo for Contact {
         match self {
             Contact::Contact(c) => c.comment(),
             Contact::Garbage(_) => None,
+        }
+    }
+}
+
+impl ContactMutable for Contact {
+    fn new_with<T>(email: T, optional: &[Option<T>]) -> Self
+    where
+        T: AsRef<str>,
+    {
+        Contact::from(EmailContact::new_with(email, optional))
+    }
+
+    fn set_name<T>(&mut self, name: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        match self {
+            Contact::Contact(c) => c.set_name(name),
+            Contact::Garbage(g) => g.set_name(name),
+        }
+    }
+
+    fn set_comment<T>(&mut self, comment: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        match self {
+            Contact::Contact(c) => c.set_comment(comment),
+            Contact::Garbage(g) => g.set_comment(comment),
+        }
+    }
+
+    fn set_email<T>(&mut self, email: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        match self {
+            Contact::Contact(c) => c.set_email(email),
+            Contact::Garbage(g) => g.set_email(email),
         }
     }
 }

@@ -58,10 +58,10 @@ fn eq() {
         AddressList::from(Group::new_with(
             "Garbage",
             vec![
-                Contact::new_with("m@niij.org", Some("Michael Zeltner"), None),
-                Contact::new_with("luck@dresden.dolls", None, None),
-                Contact::new_with("aaaa@what.com", Some("Something"), None),
-                Contact::new_with("w@oow.co", Some("Ötsi"), None),
+                Contact::new_with("m@niij.org", &[Some("Michael Zeltner")]),
+                Contact::new_with("luck@dresden.dolls", &[]),
+                Contact::new_with("aaaa@what.com", &[Some("Something")]),
+                Contact::new_with("w@oow.co", &[Some("Ötsi")]),
             ],
         )),
         AddressList::from(Group::new_with(
@@ -69,49 +69,37 @@ fn eq() {
             vec![
                 Contact::new_with(
                     "for@real.example.com",
-                    Some("Example; Email: Add@ress.es"),
-                    None,
+                    &[Some("Example; Email: Add@ress.es")],
                 ),
-                Contact::new_with("messy@example.net", None, None),
+                Contact::new_with("messy@example.net", &[]),
                 Contact::new_with(
                     "horrible@formatting.example.org",
-                    Some("Very (Invalid) Messy"),
-                    None,
+                    &[Some("Very (Invalid) Messy")],
                 ),
             ],
         )),
         AddressList::from(vec![
-            Contact::new_with("koordination@netznetz.net", None, None),
-            Contact::new_with(
-                "heinzi@example.org",
-                Some("Kunasek; Heinzi"),
-                None,
-            ),
-            Contact::new_with("this@is.hell", None, None),
+            Contact::new_with("koordination@netznetz.net", &[]),
+            Contact::new_with("heinzi@example.org", &[Some("Kunasek; Heinzi")]),
+            Contact::new_with("this@is.hell", &[]),
         ]),
         AddressList::from(Group::new_with(
             "A Group",
             vec![
-                Contact::new_with("groupmember1@example.org", None, None),
-                Contact::new_with(
-                    "member2@example.org",
-                    Some("Member 2"),
-                    None,
-                ),
+                Contact::new_with("groupmember1@example.org", &[]),
+                Contact::new_with("member2@example.org", &[Some("Member 2")]),
                 Contact::new_with(
                     "list@example.org",
-                    Some("3, Member"),
-                    Some("via example mailing list"),
+                    &[Some("3, Member"), Some("via example mailing list")],
                 ),
             ],
         )),
         AddressList::from(vec![
             Contact::new_with(
                 "email@addre.ss",
-                Some("Last Name, First Name"),
-                None,
+                &[Some("Last Name, First Name")],
             ),
-            Contact::new_with("another@one.two", None, None),
+            Contact::new_with("another@one.two", &[]),
         ]),
         AddressList::from(Group::new_with("Versteckte-Empfaenger", vec![])),
         AddressList::from(Group::new_with("Undisclosed-Recipients", vec![])),

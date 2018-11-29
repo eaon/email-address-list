@@ -14,7 +14,7 @@ use email_address_list::*;
 # fn main() -> error::Result<()> {
 
 let manual = AddressList::from(vec![
-    Contact::new_with("flastname@example.org", Some("Firstname Lastname"), None)
+    Contact::new_with("flastname@example.org", &[Some("Firstname Lastname")])
 ]);
 
 let result = parse_address_list(&Some("Firstname Lastname <flastname@example.org>"))?;
@@ -77,22 +77,32 @@ fn parse_contact_pair(pair: Pair<Rule>) -> Result<Contact> {
     let mut c = EmailContact::new();
     for inner in pair.into_inner() {
         match inner.as_rule() {
-            Rule::malformed => c.set_name(inner.as_str()),
+            Rule::malformed => {
+                c.set_name(inner.as_str());
+            }
             Rule::name => match inner.into_inner().next() {
-                Some(s) => c.set_name(s.as_str()),
+                Some(s) => {
+                    c.set_name(s.as_str());
+                }
                 None => return Err(invalid_empty("name")),
             },
-            Rule::email | Rule::mailbox => c.set_email(inner.as_str()),
+            Rule::email | Rule::mailbox => {
+                c.set_email(inner.as_str());
+            }
             Rule::email_angle | Rule::mailbox_angle => match inner
                 .into_inner()
                 .next()
             {
-                Some(s) => c.set_email(s.as_str()),
+                Some(s) => {
+                    c.set_email(s.as_str());
+                }
                 None => {
                     return Err(invalid_empty("email_angle or mailbox_angle"));
                 }
             },
-            Rule::comment => c.set_comment(inner.as_str()),
+            Rule::comment => {
+                c.set_comment(inner.as_str());
+            }
             Rule::garbage => {
                 return Ok(Contact::from(GarbageContact::from(inner.as_str())));
             }
