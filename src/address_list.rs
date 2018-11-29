@@ -18,16 +18,16 @@ pub trait ContactInfo {
 
 /// Unified interface for all contact types that
 pub trait ContactMutable {
-    fn new_with<T>(required: T, optional: &[Option<T>]) -> Self
+    fn new<T>(required: T) -> Self
     where
         T: AsRef<str>;
-    fn set_name<T>(&mut self, name: T) -> bool
+    fn set_name<T>(self, name: T) -> Self
     where
         T: AsRef<str>;
-    fn set_email<T>(&mut self, email: T) -> bool
+    fn set_email<T>(self, email: T) -> Self
     where
         T: AsRef<str>;
-    fn set_comment<T>(&mut self, comment: T) -> bool
+    fn set_comment<T>(self, comment: T) -> Self
     where
         T: AsRef<str>;
 }
@@ -37,12 +37,6 @@ pub struct EmailContact {
     email: String,
     name: Option<String>,
     comment: Option<String>,
-}
-
-impl EmailContact {
-    pub fn new() -> Self {
-        Default::default()
-    }
 }
 
 impl ContactInfo for EmailContact {
@@ -60,44 +54,37 @@ impl ContactInfo for EmailContact {
 }
 
 impl ContactMutable for EmailContact {
-    fn new_with<T>(email: T, optional: &[Option<T>]) -> Self
+    fn new<T>(email: T) -> Self
     where
         T: AsRef<str>,
     {
-        let mut contact = EmailContact::new();
-        contact.set_email(email);
-        if optional.len() == 1 {
-            if let Some(ref n) = optional[0] {
-                contact.set_name(n);
-            }
-        } else if optional.len() == 2 {
-            if let Some(ref c) = optional[1] {
-                contact.set_comment(c);
-            }
+        EmailContact {
+            email: email.as_ref().to_string(),
+            name: None,
+            comment: None,
         }
-        contact
     }
 
-    fn set_name<T>(&mut self, name: T) -> bool
+    fn set_name<T>(mut self, name: T) -> Self
     where
         T: AsRef<str>,
     {
-        let name = name.as_ref();
-        if name.trim() != "" {
-            self.name = Some(name.trim().to_string());
+        let name = name.as_ref().trim();
+        if name != "" {
+            self.name = Some(name.to_string());
         }
-        true
+        self
     }
 
-    fn set_email<T>(&mut self, email: T) -> bool
+    fn set_email<T>(mut self, email: T) -> Self
     where
         T: AsRef<str>,
     {
         self.email = email.as_ref().to_string();
-        true
+        self
     }
 
-    fn set_comment<T>(&mut self, comment: T) -> bool
+    fn set_comment<T>(mut self, comment: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -105,7 +92,7 @@ impl ContactMutable for EmailContact {
         if comment != "" {
             self.comment = Some(comment.to_string());
         }
-        true
+        self
     }
 }
 
@@ -143,27 +130,26 @@ impl ContactInfo for GarbageContact {
 }
 
 impl ContactMutable for GarbageContact {
-    fn new_with<T>(garbage: T, _: &[Option<T>]) -> Self
+    fn new<T>(garbage: T) -> Self
     where
         T: AsRef<str>,
     {
         garbage.as_ref().to_string()
     }
 
-    fn set_name<T>(&mut self, garbage: T) -> bool
+    fn set_name<T>(self, garbage: T) -> Self
     where
         T: AsRef<str>,
     {
-        self.replace_range(.., garbage.as_ref());
-        true
+        garbage.as_ref().to_string()
     }
 
-    fn set_email<T>(&mut self, _: T) -> bool {
-        false
+    fn set_email<T>(self, _: T) -> Self {
+        self
     }
 
-    fn set_comment<T>(&mut self, _: T) -> bool {
-        false
+    fn set_comment<T>(self, _: T) -> Self {
+        self
     }
 }
 
@@ -207,40 +193,40 @@ impl ContactInfo for Contact {
 }
 
 impl ContactMutable for Contact {
-    fn new_with<T>(email: T, optional: &[Option<T>]) -> Self
+    fn new<T>(email: T) -> Self
     where
         T: AsRef<str>,
     {
-        Contact::from(EmailContact::new_with(email, optional))
+        EmailContact::new(email).into()
     }
 
-    fn set_name<T>(&mut self, name: T) -> bool
+    fn set_name<T>(self, name: T) -> Self
     where
         T: AsRef<str>,
     {
         match self {
-            Contact::Contact(c) => c.set_name(name),
-            Contact::Garbage(g) => g.set_name(name),
+            Contact::Contact(c) => c.set_name(name).into(),
+            Contact::Garbage(g) => g.set_name(name).into(),
         }
     }
 
-    fn set_comment<T>(&mut self, comment: T) -> bool
+    fn set_comment<T>(self, comment: T) -> Self
     where
         T: AsRef<str>,
     {
         match self {
-            Contact::Contact(c) => c.set_comment(comment),
-            Contact::Garbage(g) => g.set_comment(comment),
+            Contact::Contact(c) => c.set_comment(comment).into(),
+            Contact::Garbage(g) => g.set_comment(comment).into(),
         }
     }
 
-    fn set_email<T>(&mut self, email: T) -> bool
+    fn set_email<T>(self, email: T) -> Self
     where
         T: AsRef<str>,
     {
         match self {
-            Contact::Contact(c) => c.set_email(email),
-            Contact::Garbage(g) => g.set_email(email),
+            Contact::Contact(c) => c.set_email(email).into(),
+            Contact::Garbage(g) => g.set_email(email).into(),
         }
     }
 }
@@ -301,18 +287,18 @@ pub struct Group {
 }
 
 impl Group {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn new_with<T>(name: T, contacts: Contacts) -> Self
+    pub fn new<T>(name: T) -> Self
     where
         T: AsRef<str>,
     {
-        Group {
-            name: name.as_ref().to_string(),
-            contacts,
-        }
+        let mut new: Self = Default::default();
+        new.name = name.as_ref().to_string();
+        new
+    }
+
+    pub fn set_contacts(mut self, contacts: Contacts) -> Self {
+        self.contacts = contacts;
+        self
     }
 }
 

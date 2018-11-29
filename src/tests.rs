@@ -54,57 +54,43 @@ fn naughty_input() {
 
 #[test]
 fn eq() {
-    let als = vec![
-        AddressList::from(Group::new_with(
-            "Garbage",
-            vec![
-                Contact::new_with("m@niij.org", &[Some("Michael Zeltner")]),
-                Contact::new_with("luck@dresden.dolls", &[]),
-                Contact::new_with("aaaa@what.com", &[Some("Something")]),
-                Contact::new_with("w@oow.co", &[Some("Ötsi")]),
-            ],
-        )),
-        AddressList::from(Group::new_with(
-            "RFC5322::Still a pain in 2018",
-            vec![
-                Contact::new_with(
-                    "for@real.example.com",
-                    &[Some("Example; Email: Add@ress.es")],
-                ),
-                Contact::new_with("messy@example.net", &[]),
-                Contact::new_with(
-                    "horrible@formatting.example.org",
-                    &[Some("Very (Invalid) Messy")],
-                ),
-            ],
-        )),
-        AddressList::from(vec![
-            Contact::new_with("koordination@netznetz.net", &[]),
-            Contact::new_with("heinzi@example.org", &[Some("Kunasek; Heinzi")]),
-            Contact::new_with("this@is.hell", &[]),
-        ]),
-        AddressList::from(Group::new_with(
-            "A Group",
-            vec![
-                Contact::new_with("groupmember1@example.org", &[]),
-                Contact::new_with("member2@example.org", &[Some("Member 2")]),
-                Contact::new_with(
-                    "list@example.org",
-                    &[Some("3, Member"), Some("via example mailing list")],
-                ),
-            ],
-        )),
-        AddressList::from(vec![
-            Contact::new_with(
-                "email@addre.ss",
-                &[Some("Last Name, First Name")],
-            ),
-            Contact::new_with("another@one.two", &[]),
-        ]),
-        AddressList::from(Group::new_with("Versteckte-Empfaenger", vec![])),
-        AddressList::from(Group::new_with("Undisclosed-Recipients", vec![])),
-        AddressList::from(Group::new_with("Undisclosed-Recipients", vec![])),
-        AddressList::from(Group::new_with("Undisclosed-Recipients", vec![])),
+    let als: Vec<AddressList> = vec![
+        Group::new("Garbage")
+            .set_contacts(vec![
+                Contact::new("m@niij.org").set_name("Michael Zeltner"),
+                Contact::new("luck@dresden.dolls"),
+                Contact::new("aaaa@what.com").set_name("Something"),
+                Contact::new("w@oow.co").set_name("Ötsi"),
+            ]).into(),
+        Group::new("RFC5322::Still a pain in 2018")
+            .set_contacts(vec![
+                Contact::new("for@real.example.com")
+                    .set_name("Example; Email: Add@ress.es"),
+                Contact::new("messy@example.net"),
+                Contact::new("horrible@formatting.example.org")
+                    .set_name("Very (Invalid) Messy"),
+            ]).into(),
+        vec![
+            Contact::new("koordination@netznetz.net"),
+            Contact::new("heinzi@example.org").set_name("Kunasek; Heinzi"),
+            Contact::new("this@is.hell"),
+        ].into(),
+        Group::new("A Group")
+            .set_contacts(vec![
+                Contact::new("groupmember1@example.org"),
+                Contact::new("member2@example.org").set_name("Member 2"),
+                Contact::new("list@example.org")
+                    .set_name("3, Member")
+                    .set_comment("via example mailing list"),
+            ]).into(),
+        vec![
+            Contact::new("email@addre.ss").set_name("Last Name, First Name"),
+            Contact::new("another@one.two"),
+        ].into(),
+        Group::new("Versteckte-Empfaenger").into(),
+        Group::new("Undisclosed-Recipients").into(),
+        Group::new("Undisclosed-Recipients").into(),
+        Group::new("Undisclosed-Recipients").into(),
     ];
     match address_lists_from_file("tests/deep_eq.txt") {
         Ok(address_lists) => {

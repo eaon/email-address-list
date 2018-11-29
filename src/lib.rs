@@ -14,7 +14,7 @@ use email_address_list::*;
 # fn main() -> error::Result<()> {
 
 let manual = AddressList::from(vec![
-    Contact::new_with("flastname@example.org", &[Some("Firstname Lastname")])
+    Contact::new("flastname@example.org").set_name("Firstname Lastname")
 ]);
 
 let result = parse_address_list(&Some("Firstname Lastname <flastname@example.org>"))?;
@@ -74,37 +74,27 @@ where
 }
 
 fn parse_contact_pair(pair: Pair<Rule>) -> Result<Contact> {
-    let mut c = EmailContact::new();
+    let mut c: EmailContact = Default::default();
     for inner in pair.into_inner() {
         match inner.as_rule() {
-            Rule::malformed => {
-                c.set_name(inner.as_str());
-            }
+            Rule::malformed => c = c.set_name(inner.as_str()),
             Rule::name => match inner.into_inner().next() {
-                Some(s) => {
-                    c.set_name(s.as_str());
-                }
+                Some(s) => c = c.set_name(s.as_str()),
                 None => return Err(invalid_empty("name")),
             },
-            Rule::email | Rule::mailbox => {
-                c.set_email(inner.as_str());
-            }
+            Rule::email | Rule::mailbox => c = c.set_email(inner.as_str()),
             Rule::email_angle | Rule::mailbox_angle => match inner
                 .into_inner()
                 .next()
             {
-                Some(s) => {
-                    c.set_email(s.as_str());
-                }
+                Some(s) => c = c.set_email(s.as_str()),
                 None => {
                     return Err(invalid_empty("email_angle or mailbox_angle"));
                 }
             },
-            Rule::comment => {
-                c.set_comment(inner.as_str());
-            }
+            Rule::comment => c = c.set_comment(inner.as_str()),
             Rule::garbage => {
-                return Ok(Contact::from(GarbageContact::from(inner.as_str())));
+                return Ok(GarbageContact::from(inner.as_str()).into());
             }
             _ => return Err(invalid_nesting("contact")),
         }
@@ -133,7 +123,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                 contacts.push(parse_contact_pair(pair)?);
             }
             Rule::group => {
-                let mut group = Group::new();
+                let mut group: Group = Default::default();
                 for inner in pair.into_inner() {
                     match inner.as_rule() {
                         Rule::name => {
