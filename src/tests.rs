@@ -13,8 +13,7 @@ fn address_lists_from_file(filename: &str) -> Result<Vec<AddressList>> {
                     Ok(a) => Some(a),
                     Err(Error::Empty) => None,
                     Err(e) => return Err(e),
-                }
-                {
+                } {
                     address_lists.push(parsed);
                 }
                 line.clear();

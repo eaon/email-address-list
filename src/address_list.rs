@@ -1,8 +1,20 @@
 use std::cmp::PartialEq;
 use std::fmt;
 
+/// "Deep Equals" will check if all fields are the same
 pub trait DeepEq<Rhs = Self> {
     fn deep_eq(&self, other: &Rhs) -> bool;
+    fn deep_ne(&self, other: &Rhs) -> bool {
+        !self.deep_eq(other)
+    }
+}
+
+/// Provides a unified interface for all contact relevant bits of information
+///
+pub trait ContactInfo {
+    fn email(&self) -> Option<&String>;
+    fn name(&self) -> Option<&String>;
+    fn comment(&self) -> Option<&String>;
 }
 
 #[derive(Debug, Clone, Default)]
@@ -64,12 +76,29 @@ impl EmailContact {
     }
 }
 
+impl ContactInfo for EmailContact {
+    fn email(&self) -> Option<&String> {
+        Some(&self.email)
+    }
+
+    fn name(&self) -> Option<&String> {
+        self.name.as_ref()
+    }
+
+    fn comment(&self) -> Option<&String> {
+        self.comment.as_ref()
+    }
+}
+
+/// Check if the email field is the same
 impl PartialEq for EmailContact {
     fn eq(&self, other: &EmailContact) -> bool {
         self.email == other.email
     }
 }
 
+/// Check if all fields are the same (PartialEq only checks if email is the
+/// same)
 impl DeepEq for EmailContact {
     fn deep_eq(&self, other: &EmailContact) -> bool {
         self.email == other.email
@@ -79,6 +108,20 @@ impl DeepEq for EmailContact {
 }
 
 pub type GarbageContact = String;
+
+impl ContactInfo for GarbageContact {
+    fn email(&self) -> Option<&String> {
+        None
+    }
+
+    fn name(&self) -> Option<&String> {
+        Some(&self)
+    }
+
+    fn comment(&self) -> Option<&String> {
+        None
+    }
+}
 
 ///
 /// Contact::from("Random bits".to_string())
@@ -102,24 +145,26 @@ impl Contact {
             _ => false,
         }
     }
+}
 
-    pub fn name(&self) -> Option<String> {
+impl ContactInfo for Contact {
+    fn name(&self) -> Option<&String> {
         match self {
-            Contact::Contact(c) => c.name.clone(),
-            Contact::Garbage(g) => Some(g.clone()),
+            Contact::Contact(c) => c.name(),
+            Contact::Garbage(g) => g.name(),
         }
     }
 
-    pub fn email(&self) -> Option<String> {
+    fn email(&self) -> Option<&String> {
         match self {
-            Contact::Contact(c) => Some(c.email.clone()),
+            Contact::Contact(c) => c.email(),
             Contact::Garbage(_) => None,
         }
     }
 
-    pub fn comment(&self) -> Option<String> {
+    fn comment(&self) -> Option<&String> {
         match self {
-            Contact::Contact(c) => c.comment.clone(),
+            Contact::Contact(c) => c.comment(),
             Contact::Garbage(_) => None,
         }
     }
@@ -193,6 +238,20 @@ impl Group {
             name: name.as_ref().to_string(),
             contacts,
         }
+    }
+}
+
+impl ContactInfo for Group {
+    fn email(&self) -> Option<&String> {
+        None
+    }
+
+    fn name(&self) -> Option<&String> {
+        Some(&self.name)
+    }
+
+    fn comment(&self) -> Option<&String> {
+        None
     }
 }
 

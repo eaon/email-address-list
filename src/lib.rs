@@ -14,7 +14,7 @@ use email_address_list::*;
 # fn main() -> error::Result<()> {
 
 let manual = AddressList::from(vec![
-        Contact::new_with("flastname@example.org", Some("Firstname Lastname"), None)
+    Contact::new_with("flastname@example.org", Some("Firstname Lastname"), None)
 ]);
 
 let result = parse_address_list(&Some("Firstname Lastname <flastname@example.org>"))?;
@@ -102,16 +102,16 @@ fn parse_contact_pair(pair: Pair<Rule>) -> Result<Contact> {
     Ok(Contact::from(c))
 }
 
-fn check_empty<'a, T>(address_list: &Option<T>) -> Result<&T>
+fn check_empty<T>(address_list: &Option<T>) -> Result<&T>
 where
     T: AsRef<str>,
 {
     match address_list {
-        Some(c) => match &c.as_ref().trim() {
-            &"" => Err(Error::Empty),
+        Some(c) => match c.as_ref().trim() {
+            "" => Err(Error::Empty),
             _ => Ok(c),
         },
-        None => return Err(Error::Empty),
+        None => Err(Error::Empty),
     }
 }
 
@@ -120,7 +120,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
     for pair in pairs {
         match pair.as_rule() {
             Rule::contact => {
-                contacts.push(Contact::from(parse_contact_pair(pair)?));
+                contacts.push(parse_contact_pair(pair)?);
             }
             Rule::group => {
                 let mut group = Group::new();
