@@ -1,51 +1,27 @@
+use super::error::*;
 use super::*;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-
-fn address_lists_from_file(filename: &str) -> Result<Vec<AddressList>> {
-    let mut address_lists = Vec::<AddressList>::new();
-    match File::open(filename) {
-        Ok(f) => {
-            let mut lines = BufReader::new(f);
-            let mut line = String::new();
-            while lines.read_line(&mut line).unwrap() > 0 {
-                if let Some(parsed) = match parse_address_list(&Some(&line)) {
-                    Ok(a) => Some(a),
-                    Err(Error::Empty) => None,
-                    Err(e) => return Err(e),
-                } {
-                    address_lists.push(parsed);
-                }
-                line.clear();
-            }
-        }
-        Err(error) => {
-            println!("Couldn't open file {}", error);
-            assert!(false);
-        }
-    }
-    Ok(address_lists)
-}
+use std::process::Command;
 
 #[test]
-fn naughty_input() {
-    let address_lists =
-        address_lists_from_file("tests/naughty-strings.txt").unwrap();
-    for address_list in address_lists {
-        match address_list {
-            AddressList::Contacts(c) => {
-                for contact in c {
-                    match contact {
-                        Contact::Garbage(_) => {}
-                        _ => {
-                            println!("{:?}", contact);
-                            assert!(false);
-                        }
-                    }
+fn big_list_of_naughty_strings() {
+    let naughty = Command::new("curl")
+        .args(&["https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt"])
+        .output()
+        .unwrap();
+    let mut body = String::from_utf8(naughty.stdout).unwrap();
+    let mut lines = body.as_mut_str().lines();
+    while let Some(line) = lines.next() {
+        println!("{}", line);
+        match parse_address_list(&line) {
+            Ok(a) => {
+                assert!(!a.is_group());
+                for contact in a.contacts() {
+                    assert!(contact.is_garbage());
                 }
             }
-            _ => {
-                println!("{:?}", address_list);
+            Err(Error::Empty) => {}
+            Err(e) => {
+                println!("{:?}", e);
                 assert!(false);
             }
         }
@@ -54,15 +30,41 @@ fn naughty_input() {
 
 #[test]
 fn eq() {
-    let als: Vec<AddressList> = vec![
+    let literals = [
+        concat!(
+            r#"Garbage:       Enw <enghraifft@example.org>, "#,
+            r#"luck@dresden.dolls, "Something"      <aaaa@what.com>, Ötsi "#,
+            "<w@oow.co,>;",
+        ),
+        concat!(
+            r#""RFC822::Still a pain in 2018": "Example; Email: "#,
+            r#"Add@ress.es" <for@real.example.com>, "messy@example.net", Very"#,
+            " (Invalid) Messy  <horrible@formatting.example.org>;",
+        ),
+        concat!(
+            ",koordination@netznetz.net, Kunasek; Heinzi <heinzi@example.org>,",
+            " <this@is.hell>",
+        ),
+        concat!(
+            r#"A Group:groupmember1@example.org,"Member 2" "#,
+            r#"<member2@example.org>, "3, Member" (via example mailing list) "#,
+            "<list@example.org>;",
+        ),
+        "Last Name, First Name <email@addre.ss>, another@one.two",
+        "Versteckte-Empfaenger:;",
+        "Undisclosed-Recipients: <>;",
+        "<Undisclosed-Recipients: <>;>",
+        "<Undisclosed-Recipients:;>",
+    ];
+    let address_lists: Vec<AddressList> = vec![
         Group::new("Garbage")
             .set_contacts(vec![
-                Contact::new("m@niij.org").set_name("Michael Zeltner"),
+                Contact::new("enghraifft@example.org").set_name("Enw"),
                 Contact::new("luck@dresden.dolls"),
                 Contact::new("aaaa@what.com").set_name("Something"),
                 Contact::new("w@oow.co").set_name("Ötsi"),
             ]).into(),
-        Group::new("RFC5322::Still a pain in 2018")
+        Group::new("RFC822::Still a pain in 2018")
             .set_contacts(vec![
                 Contact::new("for@real.example.com")
                     .set_name("Example; Email: Add@ress.es"),
@@ -92,29 +94,18 @@ fn eq() {
         Group::new("Undisclosed-Recipients").into(),
         Group::new("Undisclosed-Recipients").into(),
     ];
-    match address_lists_from_file("tests/deep_eq.txt") {
-        Ok(address_lists) => {
-            for (i, al) in address_lists.iter().enumerate() {
-                let j = match i {
-                    0...5 => i + 3,
-                    _ => i - 3,
-                };
-                println!("== {:?}\n== {:?}", &al, &als[i]);
-                assert!(al.deep_eq(&als[i]));
-                assert_eq!(al, &als[i]);
-                println!("!= {:?}", als[j]);
-                assert!(al != &als[j]);
-            }
-        }
-        Err(e) => {
-            println!(
-                "{}",
-                match e {
-                    Error::UnexpectedError(e) => e,
-                    _ => format!("{:?}", e),
-                }
-            );
-            assert!(false);
-        }
+    assert!(literals.len() == address_lists.len());
+    for (i, address_list) in address_lists.iter().enumerate() {
+        let j = match i {
+            0...5 => i + 3,
+            _ => i - 3,
+        };
+        let mut other = parse_address_list(literals[i]).unwrap();
+        println!("    is == {:?}\nshould == {:?}\n", &address_list, &other);
+        assert!(address_list.deep_eq(&other));
+        assert_eq!(address_list, &other);
+        other = parse_address_list(literals[j]).unwrap();
+        println!("!= {:?}", other);
+        assert!(address_list != &other);
     }
 }

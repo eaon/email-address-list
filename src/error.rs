@@ -1,7 +1,7 @@
+use parser::Rule;
 use std::convert::From;
 use std::error;
 use std::fmt;
-use Rule;
 
 #[derive(Debug)]
 pub enum Error {

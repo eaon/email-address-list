@@ -1,7 +1,7 @@
 use std::cmp::PartialEq;
 use std::fmt;
 
-/// "Deep Equals" will check if all fields are the same
+/// Check if all fields are the same rather than just a subset ("deep equals")
 pub trait DeepEq<Rhs = Self> {
     fn deep_eq(&self, other: &Rhs) -> bool;
     fn deep_ne(&self, other: &Rhs) -> bool {
@@ -9,15 +9,11 @@ pub trait DeepEq<Rhs = Self> {
     }
 }
 
-/// Provides a unified interface for all contact relevant bits of information
-pub trait ContactInfo {
+/// Unified interface for all contact types
+pub trait Contactish {
     fn email(&self) -> Option<&String>;
     fn name(&self) -> Option<&String>;
     fn comment(&self) -> Option<&String>;
-}
-
-/// Unified interface for all contact types that
-pub trait ContactMutable {
     fn new<T>(required: T) -> Self
     where
         T: AsRef<str>;
@@ -32,6 +28,7 @@ pub trait ContactMutable {
         T: AsRef<str>;
 }
 
+/// A contact with at least an email address
 #[derive(Debug, Clone, Default)]
 pub struct EmailContact {
     email: String,
@@ -39,7 +36,7 @@ pub struct EmailContact {
     comment: Option<String>,
 }
 
-impl ContactInfo for EmailContact {
+impl Contactish for EmailContact {
     fn email(&self) -> Option<&String> {
         Some(&self.email)
     }
@@ -51,9 +48,7 @@ impl ContactInfo for EmailContact {
     fn comment(&self) -> Option<&String> {
         self.comment.as_ref()
     }
-}
 
-impl ContactMutable for EmailContact {
     fn new<T>(email: T) -> Self
     where
         T: AsRef<str>,
@@ -113,50 +108,64 @@ impl DeepEq for EmailContact {
     }
 }
 
-pub type GarbageContact = String;
+/// A string that we couldn't parse into an [`EmailContact`] but implements
+/// the [`Contactish`] trait regardless
+///
+/// [`EmailContact`]: struct.EmailContact.html
+/// [`Contactish`]: trait.Contactish.html
+#[derive(Debug, Clone, Default)]
+pub struct GarbageContact(String);
 
-impl ContactInfo for GarbageContact {
+impl Contactish for GarbageContact {
+    /// Since we are garbage, we don't have an email address
     fn email(&self) -> Option<&String> {
         None
     }
 
+    /// Since we are garbage, we don't have a name
     fn name(&self) -> Option<&String> {
-        Some(&self)
-    }
-
-    fn comment(&self) -> Option<&String> {
         None
     }
-}
 
-impl ContactMutable for GarbageContact {
+    /// Returns the actual string we couldn't interpret as [`EmailContact`]
+    ///
+    /// [`EmailContact`]: struct.EmailContact.html
+    fn comment(&self) -> Option<&String> {
+        Some(&self.0)
+    }
+
     fn new<T>(garbage: T) -> Self
     where
         T: AsRef<str>,
     {
-        garbage.as_ref().to_string()
+        GarbageContact(garbage.as_ref().to_string())
     }
 
-    fn set_name<T>(self, garbage: T) -> Self
+    fn set_comment<T>(mut self, garbage: T) -> Self
     where
         T: AsRef<str>,
     {
-        garbage.as_ref().to_string()
+        self.0 = garbage.as_ref().to_string();
+        self
     }
 
     fn set_email<T>(self, _: T) -> Self {
         self
     }
 
-    fn set_comment<T>(self, _: T) -> Self {
+    fn set_name<T>(self, _: T) -> Self {
         self
     }
 }
 
-/// Contact::from("Random bits".to_string())
+/// Either an [`EmailContact`] we could successfully parse or a
+/// [`GarbageContact`] we didn't want to throw away
+///
+/// [`EmailContact`]: struct.EmailContact.html
+/// [`GarbageContact`]: struct.GarbageContact.html
 #[derive(Clone)]
 pub enum Contact {
-    Contact(EmailContact),
+    Email(EmailContact),
     Garbage(GarbageContact),
 }
 
@@ -169,30 +178,40 @@ impl Contact {
     }
 }
 
-impl ContactInfo for Contact {
+/// Will be handed down on our variants' contents, which implement the same
+/// trait
+///
+/// The exception to the rule is the [`::new`] method.
+///
+/// **Please note:** the current implementation does not (yet?) magically change
+/// a `Contact::Garbage` variant into a `Contact::Email` one if you try to call
+/// `::set_email`. It merely returns an unchanged `Self`.
+///
+/// [`::new`]: enum.Contact.html#method.new
+impl Contactish for Contact {
     fn name(&self) -> Option<&String> {
         match self {
-            Contact::Contact(c) => c.name(),
+            Contact::Email(c) => c.name(),
             Contact::Garbage(g) => g.name(),
         }
     }
 
     fn email(&self) -> Option<&String> {
         match self {
-            Contact::Contact(c) => c.email(),
+            Contact::Email(c) => c.email(),
             Contact::Garbage(_) => None,
         }
     }
 
     fn comment(&self) -> Option<&String> {
         match self {
-            Contact::Contact(c) => c.comment(),
+            Contact::Email(c) => c.comment(),
             Contact::Garbage(_) => None,
         }
     }
-}
 
-impl ContactMutable for Contact {
+    /// By default we create a new `Contact::Email` variant, since
+    /// `Contact::Garbage` is merely a fallback
     fn new<T>(email: T) -> Self
     where
         T: AsRef<str>,
@@ -205,7 +224,7 @@ impl ContactMutable for Contact {
         T: AsRef<str>,
     {
         match self {
-            Contact::Contact(c) => c.set_name(name).into(),
+            Contact::Email(c) => c.set_name(name).into(),
             Contact::Garbage(g) => g.set_name(name).into(),
         }
     }
@@ -215,7 +234,7 @@ impl ContactMutable for Contact {
         T: AsRef<str>,
     {
         match self {
-            Contact::Contact(c) => c.set_comment(comment).into(),
+            Contact::Email(c) => c.set_comment(comment).into(),
             Contact::Garbage(g) => g.set_comment(comment).into(),
         }
     }
@@ -225,7 +244,7 @@ impl ContactMutable for Contact {
         T: AsRef<str>,
     {
         match self {
-            Contact::Contact(c) => c.set_email(email).into(),
+            Contact::Email(c) => c.set_email(email).into(),
             Contact::Garbage(g) => g.set_email(email).into(),
         }
     }
@@ -255,7 +274,13 @@ impl fmt::Debug for Contact {
                 None => "".to_string(),
             },
             match self.comment() {
-                Some(c) => format!("({}) ", c),
+                Some(c) => {
+                    if !self.is_garbage() {
+                        format!("({}) ", c)
+                    } else {
+                        format!("Garbage: \"{}\"", c)
+                    }
+                }
                 None => "".to_string(),
             },
             match self.email() {
@@ -274,12 +299,15 @@ impl From<GarbageContact> for Contact {
 
 impl From<EmailContact> for Contact {
     fn from(contact: EmailContact) -> Contact {
-        Contact::Contact(contact)
+        Contact::Email(contact)
     }
 }
 
-pub type Contacts = Vec<Contact>;
+pub(crate) type Contacts = Vec<Contact>;
 
+/// A group with a name and a Vec of [`Contact`]s
+///
+/// [`Contact`]: enum.Contact.html
 #[derive(Debug, Clone, Default)]
 pub struct Group {
     pub name: String,
@@ -299,20 +327,6 @@ impl Group {
     pub fn set_contacts(mut self, contacts: Contacts) -> Self {
         self.contacts = contacts;
         self
-    }
-}
-
-impl ContactInfo for Group {
-    fn email(&self) -> Option<&String> {
-        None
-    }
-
-    fn name(&self) -> Option<&String> {
-        Some(&self.name)
-    }
-
-    fn comment(&self) -> Option<&String> {
-        None
     }
 }
 
@@ -360,6 +374,18 @@ where
     }
 }
 
+/// All forms which email headers like `To`, `From`, `Cc`, etc. can take
+///
+/// # Examples
+///
+/// ```rust
+/// # use email_address_list::*;
+/// let latvian: AddressList = vec![Contact::new("piemērs@example.org")].into();
+/// assert!(latvian.contacts()[0].email().unwrap() == "piemērs@example.org");
+///
+/// let sudanese: AddressList = Group::new("Conto").into();
+/// assert!(sudanese.group_name().unwrap() == &"Conto".to_string());
+/// ```
 #[derive(Debug, Clone)]
 pub enum AddressList {
     Contacts(Contacts),
@@ -367,6 +393,7 @@ pub enum AddressList {
 }
 
 impl AddressList {
+    /// Check if this address list is a group
     pub fn is_group(&self) -> bool {
         match self {
             AddressList::Group(_) => true,
@@ -374,6 +401,7 @@ impl AddressList {
         }
     }
 
+    /// Get the group name if it is a group
     pub fn group_name(&self) -> Option<&String> {
         match self {
             AddressList::Group(g) => Some(&g.name),
@@ -381,6 +409,7 @@ impl AddressList {
         }
     }
 
+    /// Get the contacts regardless of our variant
     pub fn contacts(&self) -> &Contacts {
         match self {
             AddressList::Contacts(c) => &c,
@@ -397,7 +426,9 @@ impl PartialEq for AddressList {
         match self {
             AddressList::Group(g) => {
                 if let AddressList::Group(o) = other {
-                    return g == o;
+                    g == o
+                } else {
+                    false
                 }
             }
             AddressList::Contacts(c) => {
@@ -410,10 +441,12 @@ impl PartialEq for AddressList {
                             return false;
                         }
                     }
+                    true
+                } else {
+                    false
                 }
             }
         }
-        true
     }
 }
 
@@ -425,7 +458,9 @@ impl DeepEq for AddressList {
         match self {
             AddressList::Group(g) => {
                 if let AddressList::Group(o) = other {
-                    return g.deep_eq(&o);
+                    g.deep_eq(&o)
+                } else {
+                    false
                 }
             }
             AddressList::Contacts(c) => {
@@ -438,10 +473,12 @@ impl DeepEq for AddressList {
                             return false;
                         }
                     }
+                    true
+                } else {
+                    false
                 }
             }
         }
-        true
     }
 }
 
