@@ -198,7 +198,7 @@ impl Contactish for Contact {
     fn name(&self) -> Option<&String> {
         match self {
             Contact::Email(c) => c.name(),
-            Contact::Garbage(g) => g.name(),
+            Contact::Garbage(_) => None,
         }
     }
 
@@ -212,7 +212,7 @@ impl Contactish for Contact {
     fn comment(&self) -> Option<&String> {
         match self {
             Contact::Email(c) => c.comment(),
-            Contact::Garbage(_) => None,
+            Contact::Garbage(c) => c.comment(),
         }
     }
 

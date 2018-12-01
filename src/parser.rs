@@ -54,7 +54,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                         if g.comment().unwrap() != "" {
                             contacts.push(g.into());
                         }
-                    },
+                    }
                     Ok(c) => contacts.push(c),
                     Err(e) => return Err(e),
                 }
@@ -211,7 +211,7 @@ where
 ///
 /// ```rust
 /// # use email_address_list::*;
-/// match parse_contact("") {
+/// match parse_contact(",") {
 ///     Err(error::Error::Empty) => assert!(true),
 ///     Ok(_) | Err(_) => assert!(false),
 /// }
@@ -226,12 +226,15 @@ where
     T: ?Sized,
 {
     check_empty(contact)?;
-    Ok(parse_contact_pair(match Parser::parse(
-        Rule::contact,
-        contact.as_ref().trim(),
-    )?.next()
-    {
-        Some(c) => c,
+    let mut pairs = Parser::parse(Rule::contact, contact.as_ref().trim())?;
+    let contact = match pairs.next() {
+        Some(c) => parse_contact_pair(c),
         None => return Err(Error::Empty),
-    })?)
+    }?;
+    println!("{:?}", contact);
+    if contact.is_garbage() && contact.comment().unwrap() == "" {
+        Err(Error::Empty)
+    } else {
+        Ok(contact)
+    }
 }

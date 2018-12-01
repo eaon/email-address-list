@@ -1,6 +1,6 @@
 [package]
 name = "email-address-list"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["eaon <eaon@mit.edu>"]
 description = "Pest based parser for address-lists in email headers like to/from/cc/etc."
 repository = "https://ghom.niij.org/eaon/email-address-list/"
@@ -10,7 +10,7 @@ keywords = ["email", "parser", "peg"]
 categories = ["parser-implementations", "email"]
 
 [badges]
-appveyor = { repository = "eaon/email-address-list", service = "git" }
+appveyor = { repository = "eaon/email-address-list", service = "git", id = "c3ekor6vn5os34w5" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
