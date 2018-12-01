@@ -1,7 +1,7 @@
+address_list = { ( group | contact_list ) }
+
 WS = _{ " " | "\t" }
 NL = _{ "\n" | "\r" }
-
-all = { ( group | contact_list ) }
 
 garbage = @{ (!(NL | ",") ~ ANY)* }
 

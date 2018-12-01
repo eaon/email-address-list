@@ -158,6 +158,12 @@ impl Contactish for GarbageContact {
     }
 }
 
+impl From<String> for GarbageContact {
+    fn from(string: String) -> Self {
+        GarbageContact(string)
+    }
+}
+
 /// Either an [`EmailContact`] we could successfully parse or a
 /// [`GarbageContact`] we didn't want to throw away
 ///

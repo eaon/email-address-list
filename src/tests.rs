@@ -43,7 +43,7 @@ fn eq() {
         ),
         concat!(
             ",koordination@netznetz.net, Kunasek; Heinzi <heinzi@example.org>,",
-            " <this@is.hell>",
+            " <this@is.hell>,   ,  ,",
         ),
         concat!(
             r#"A Group:groupmember1@example.org,"Member 2" "#,

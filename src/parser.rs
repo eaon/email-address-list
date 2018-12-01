@@ -46,7 +46,18 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
     for pair in pairs {
         match pair.as_rule() {
             Rule::contact => {
-                contacts.push(parse_contact_pair(pair)?);
+                match parse_contact_pair(pair) {
+                    // Only add GarbageContent that isn't empty
+                    Ok(Contact::Garbage(g)) => {
+                        // GarbageContacts::comment() will always return Some,
+                        // so the unwrap here is unproblematic
+                        if g.comment().unwrap() != "" {
+                            contacts.push(g.into());
+                        }
+                    },
+                    Ok(c) => contacts.push(c),
+                    Err(e) => return Err(e),
+                }
             }
             Rule::group => {
                 let mut group: Group = Default::default();
@@ -68,7 +79,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                 }
                 return Ok(AddressList::from(group));
             }
-            Rule::all => return parse_pairs(pair.into_inner()),
+            Rule::address_list => return parse_pairs(pair.into_inner()),
             Rule::contact_list => return parse_pairs(pair.into_inner()),
             _ => {
                 return Err(UnexpectedError(format!(
@@ -156,7 +167,7 @@ where
 {
     check_empty(address_list)?;
     Ok(parse_pairs(Parser::parse(
-        Rule::all,
+        Rule::address_list,
         address_list.as_ref().trim(),
     )?)?)
 }
