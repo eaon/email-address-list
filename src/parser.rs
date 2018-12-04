@@ -41,24 +41,24 @@ fn parse_contact_pair(pair: Pair<Rule>) -> Result<Contact> {
     Ok(c.into())
 }
 
+fn filter_garbage(contact: &Result<Contact>) -> bool {
+    match contact {
+        // GarbageContacts::comment() will always return Some,
+        // so the unwrap here is unproblematic
+        Ok(Contact::Garbage(g)) => {
+            if g.comment().unwrap() == "" {
+                return false;
+            }
+            true
+        }
+        _ => true,
+    }
+}
+
 fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
     let mut contacts = Contacts::new();
     for pair in pairs {
         match pair.as_rule() {
-            Rule::contact => {
-                match parse_contact_pair(pair) {
-                    // Only add GarbageContent that isn't empty
-                    Ok(Contact::Garbage(g)) => {
-                        // GarbageContacts::comment() will always return Some,
-                        // so the unwrap here is unproblematic
-                        if g.comment().unwrap() != "" {
-                            contacts.push(g.into());
-                        }
-                    }
-                    Ok(c) => contacts.push(c),
-                    Err(e) => return Err(e),
-                }
-            }
             Rule::group => {
                 let mut group: Group = Default::default();
                 for inner in pair.into_inner() {
@@ -68,11 +68,11 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                                 inner.into_inner().as_str().to_string();
                         }
                         Rule::contact_list => {
-                            group.contacts =
-                                match parse_pairs(inner.into_inner())? {
-                                    AddressList::Contacts(c) => c,
-                                    _ => return Err(invalid_nesting("group")),
-                                };
+                            group.contacts = inner
+                                .into_inner()
+                                .map(parse_contact_pair)
+                                .filter(filter_garbage)
+                                .collect::<Result<Vec<Contact>>>()?
                         }
                         _ => return Err(invalid_nesting("group")),
                     }
@@ -80,7 +80,13 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                 return Ok(AddressList::from(group));
             }
             Rule::address_list => return parse_pairs(pair.into_inner()),
-            Rule::contact_list => return parse_pairs(pair.into_inner()),
+            Rule::contact_list => {
+                contacts = pair
+                    .into_inner()
+                    .map(parse_contact_pair)
+                    .filter(filter_garbage)
+                    .collect::<Result<Vec<Contact>>>()?
+            }
             _ => {
                 return Err(UnexpectedError(format!(
                     "{:?} can't be parsed with this function",
