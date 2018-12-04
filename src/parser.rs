@@ -12,47 +12,38 @@ use address_list::*;
 #[grammar = "../grammars/permissive.pest"]
 struct Parser;
 
-fn parse_contact_pair(pair: Pair<Rule>) -> Result<Contact> {
+fn parse_contact_pair(pair: Pair<Rule>) -> Option<Result<Contact>> {
     let mut c: EmailContact = Default::default();
     for inner in pair.into_inner() {
         match inner.as_rule() {
             Rule::malformed => c = c.set_name(inner.as_str()),
             Rule::name => match inner.into_inner().next() {
                 Some(s) => c = c.set_name(s.as_str()),
-                None => return Err(invalid_empty("name")),
+                None => return Some(Err(invalid_empty("name"))),
             },
             Rule::email | Rule::mailbox => c = c.set_email(inner.as_str()),
-            Rule::email_angle | Rule::mailbox_angle => match inner
-                .into_inner()
-                .next()
-            {
-                Some(s) => c = c.set_email(s.as_str()),
-                None => {
-                    return Err(invalid_empty("email_angle or mailbox_angle"));
+            Rule::email_angle | Rule::mailbox_angle => {
+                match inner.into_inner().next() {
+                    Some(s) => c = c.set_email(s.as_str()),
+                    None => {
+                        return Some(Err(invalid_empty(
+                            "email_angle or mailbox_angle",
+                        )));
+                    }
                 }
-            },
+            }
             Rule::comment => c = c.set_comment(inner.as_str()),
             Rule::garbage => {
-                return Ok(GarbageContact::new(inner.as_str()).into());
+                let garbage = inner.as_str();
+                if garbage == "" {
+                    return None;
+                }
+                return Some(Ok(GarbageContact::new(garbage).into()));
             }
-            _ => return Err(invalid_nesting("contact")),
+            _ => return Some(Err(invalid_nesting("contact"))),
         }
     }
-    Ok(c.into())
-}
-
-fn filter_garbage(contact: &Result<Contact>) -> bool {
-    match contact {
-        // GarbageContacts::comment() will always return Some,
-        // so the unwrap here is unproblematic
-        Ok(Contact::Garbage(g)) => {
-            if g.comment().unwrap() == "" {
-                return false;
-            }
-            true
-        }
-        _ => true,
-    }
+    Some(Ok(c.into()))
 }
 
 fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
@@ -70,8 +61,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                         Rule::contact_list => {
                             group.contacts = inner
                                 .into_inner()
-                                .map(parse_contact_pair)
-                                .filter(filter_garbage)
+                                .filter_map(parse_contact_pair)
                                 .collect::<Result<Vec<Contact>>>()?
                         }
                         _ => return Err(invalid_nesting("group")),
@@ -83,8 +73,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
             Rule::contact_list => {
                 contacts = pair
                     .into_inner()
-                    .map(parse_contact_pair)
-                    .filter(filter_garbage)
+                    .filter_map(parse_contact_pair)
                     .collect::<Result<Vec<Contact>>>()?
             }
             _ => {
@@ -234,7 +223,10 @@ where
     check_empty(contact)?;
     let mut pairs = Parser::parse(Rule::contact, contact.as_ref().trim())?;
     let contact = match pairs.next() {
-        Some(c) => parse_contact_pair(c),
+        Some(c) => match parse_contact_pair(c) {
+            Some(c) => c,
+            None => return Err(Error::Empty),
+        },
         None => return Err(Error::Empty),
     }?;
     println!("{:?}", contact);
