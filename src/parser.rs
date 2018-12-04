@@ -222,17 +222,10 @@ where
 {
     check_empty(contact)?;
     let mut pairs = Parser::parse(Rule::contact, contact.as_ref().trim())?;
-    let contact = match pairs.next() {
-        Some(c) => match parse_contact_pair(c) {
-            Some(c) => c,
-            None => return Err(Error::Empty),
-        },
-        None => return Err(Error::Empty),
-    }?;
-    println!("{:?}", contact);
-    if contact.is_garbage() && contact.comment().unwrap() == "" {
-        Err(Error::Empty)
-    } else {
-        Ok(contact)
+    if let Some(contact) = pairs.next() {
+        if let Some(c) = parse_contact_pair(contact) {
+            return c;
+        }
     }
+    Err(Error::Empty)
 }
