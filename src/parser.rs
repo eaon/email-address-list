@@ -62,7 +62,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                             group.contacts = inner
                                 .into_inner()
                                 .filter_map(parse_contact_pair)
-                                .collect::<Result<Vec<Contact>>>()?
+                                .collect::<Result<Contacts>>()?
                         }
                         _ => return Err(invalid_nesting("group")),
                     }
@@ -74,7 +74,7 @@ fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
                 contacts = pair
                     .into_inner()
                     .filter_map(parse_contact_pair)
-                    .collect::<Result<Vec<Contact>>>()?
+                    .collect::<Result<Contacts>>()?
             }
             _ => {
                 return Err(UnexpectedError(format!(
