@@ -1,4 +1,4 @@
-use parser::Rule;
+use crate::parser::Rule;
 use std::convert::From;
 use std::error;
 use std::fmt;

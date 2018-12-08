@@ -24,17 +24,14 @@ let result = parse_address_list(
 assert!(result.deep_eq(&manual));
 ```
 */
-extern crate pest;
-#[macro_use]
-extern crate pest_derive;
 
 pub mod error;
 
 mod address_list;
-pub use address_list::*;
+pub use crate::address_list::*;
 
 mod parser;
-pub use parser::{parse_address_list, parse_contact};
+pub use crate::parser::{parse_address_list, parse_contact};
 
 #[cfg(test)]
 mod tests;

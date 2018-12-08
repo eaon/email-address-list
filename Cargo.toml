@@ -8,6 +8,7 @@ readme = "README.md"
 license = "GPL-3.0"
 keywords = ["email", "parser", "peg"]
 categories = ["parser-implementations", "email"]
+edition = "2018"
 
 [badges]
 appveyor = { repository = "eaon/email-address-list", service = "git", id = "c3ekor6vn5os34w5" }

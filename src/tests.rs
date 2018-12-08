@@ -63,7 +63,8 @@ fn eq() {
                 Contact::new("luck@dresden.dolls"),
                 Contact::new("aaaa@what.com").set_name("Something"),
                 Contact::new("w@oow.co").set_name("Ötsi"),
-            ]).into(),
+            ])
+            .into(),
         Group::new("RFC822::Still a pain in 2018")
             .set_contacts(vec![
                 Contact::new("for@real.example.com")
@@ -71,12 +72,14 @@ fn eq() {
                 Contact::new("messy@example.net"),
                 Contact::new("horrible@formatting.example.org")
                     .set_name("Very (Invalid) Messy"),
-            ]).into(),
+            ])
+            .into(),
         vec![
             Contact::new("koordination@netznetz.net"),
             Contact::new("heinzi@example.org").set_name("Kunasek; Heinzi"),
             Contact::new("this@is.hell"),
-        ].into(),
+        ]
+        .into(),
         Group::new("A Group")
             .set_contacts(vec![
                 Contact::new("groupmember1@example.org"),
@@ -84,11 +87,13 @@ fn eq() {
                 Contact::new("list@example.org")
                     .set_name("3, Member")
                     .set_comment("via example mailing list"),
-            ]).into(),
+            ])
+            .into(),
         vec![
             Contact::new("email@addre.ss").set_name("Last Name, First Name"),
             Contact::new("another@one.two"),
-        ].into(),
+        ]
+        .into(),
         Group::new("Versteckte-Empfaenger").into(),
         Group::new("Undisclosed-Recipients").into(),
         Group::new("Undisclosed-Recipients").into(),
