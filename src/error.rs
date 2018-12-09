@@ -12,15 +12,15 @@ pub enum Error {
 
 impl error::Error for Error {
     fn description(&self) -> &str {
-        match *self {
+        match self {
             Error::Empty => "Nothing to parse",
-            Error::UnexpectedError(ref e) => e,
+            Error::UnexpectedError(e) => e,
             _ => self.description(),
         }
     }
 
     fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
+        match self {
             _ => Some(self),
         }
     }
