@@ -102,7 +102,7 @@ fn eq() {
     assert!(literals.len() == address_lists.len());
     for (i, address_list) in address_lists.iter().enumerate() {
         let j = match i {
-            0...5 => i + 3,
+            0..=5 => i + 3,
             _ => i - 3,
         };
         let mut other = parse_address_list(literals[i]).unwrap();

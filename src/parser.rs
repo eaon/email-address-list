@@ -13,7 +13,7 @@ use crate::address_list::*;
 #[grammar = "../grammars/permissive.pest"]
 struct Parser;
 
-fn parse_contact_pair(pair: Pair<Rule>) -> Option<Result<Contact>> {
+fn parse_contact_pair(pair: Pair<'_, Rule>) -> Option<Result<Contact>> {
     let mut c: EmailContact = Default::default();
     for inner in pair.into_inner() {
         match inner.as_rule() {
@@ -47,7 +47,7 @@ fn parse_contact_pair(pair: Pair<Rule>) -> Option<Result<Contact>> {
     Some(Ok(c.into()))
 }
 
-fn parse_pairs(pairs: Pairs<Rule>) -> Result<AddressList> {
+fn parse_pairs(pairs: Pairs<'_, Rule>) -> Result<AddressList> {
     let mut contacts = Contacts::new();
     for pair in pairs {
         match pair.as_rule() {

@@ -271,7 +271,7 @@ impl DeepEq for Contact {
 }
 
 impl fmt::Debug for Contact {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "Contact({}{}{})",
