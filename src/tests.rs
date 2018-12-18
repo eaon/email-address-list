@@ -32,7 +32,7 @@ fn big_list_of_naughty_strings() {
 fn eq() {
     let literals = [
         concat!(
-            r#"Garbage:       Enw <enghraifft@example.org>, "#,
+            r#"Garbage:       enghraifft@example.org (Enw), "#,
             r#"luck@dresden.dolls, "Something"      <aaaa@what.com>, Ötsi "#,
             "<w@oow.co,>;",
         ),

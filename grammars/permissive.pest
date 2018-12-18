@@ -31,6 +31,7 @@ mailbox_angle = {
 }
 
 contact = {
+    email ~ WS* ~ "(" ~ name ~ ")" |
     email |
     email_angle |
     name ~ email_angle |
@@ -40,6 +41,7 @@ contact = {
     malformed ~ email_angle |
     name ~ WS* ~ mailbox_angle |
     malformed ~ WS* ~ mailbox_angle |
+    mailbox ~ WS* ~ "(" ~ name ~ ")" |
     mailbox |
     garbage
  }
