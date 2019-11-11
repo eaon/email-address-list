@@ -1,7 +1,7 @@
 [package]
 name = "email-address-list"
-version = "0.2.1"
-authors = ["eaon <eaon@mit.edu>"]
+version = "0.2.5"
+authors = ["eaon <eaon@posteo.net>"]
 description = "Pest based parser for address-lists in email headers like to/from/cc/etc."
 repository = "https://ghom.niij.org/eaon/email-address-list/"
 readme = "README.md"

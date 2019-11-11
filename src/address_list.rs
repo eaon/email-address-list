@@ -1,5 +1,7 @@
 use std::cmp::PartialEq;
 use std::fmt;
+use std::iter::{FromIterator, IntoIterator, Iterator};
+use std::ops::Deref;
 
 /// Check if all fields are the same rather than just a subset ("deep equals")
 pub trait DeepEq<Rhs = Self> {
@@ -28,6 +30,11 @@ pub trait Contactish {
         T: AsRef<str>;
 }
 
+/// For everything that has contacts
+pub trait Contactsish {
+    fn as_contacts(self) -> Contacts;
+}
+
 /// A contact with at least an email address
 #[derive(Debug, Clone, Default)]
 pub struct EmailContact {
@@ -54,7 +61,7 @@ impl Contactish for EmailContact {
         T: AsRef<str>,
     {
         EmailContact {
-            email: email.as_ref().to_string(),
+            email: email.as_ref().into(),
             name: None,
             comment: None,
         }
@@ -66,7 +73,7 @@ impl Contactish for EmailContact {
     {
         let name = name.as_ref().trim();
         if name != "" {
-            self.name = Some(name.to_string());
+            self.name = Some(name.into());
         }
         self
     }
@@ -75,7 +82,7 @@ impl Contactish for EmailContact {
     where
         T: AsRef<str>,
     {
-        self.email = email.as_ref().to_string();
+        self.email = email.as_ref().into();
         self
     }
 
@@ -85,7 +92,7 @@ impl Contactish for EmailContact {
     {
         let comment = comment.as_ref();
         if comment != "" {
-            self.comment = Some(comment.to_string());
+            self.comment = Some(comment.into());
         }
         self
     }
@@ -105,6 +112,24 @@ impl DeepEq for EmailContact {
         self.email == other.email
             && self.name == other.name
             && self.comment == other.comment
+    }
+}
+
+impl fmt::Display for EmailContact {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}{}{}",
+            match &self.name {
+                Some(n) => format!("\"{}\" ", n),
+                None => "".into(),
+            },
+            match &self.comment() {
+                Some(c) => format!("({}) ", c),
+                None => "".into(),
+            },
+            format!("<{}>", self.email),
+        )
     }
 }
 
@@ -138,14 +163,14 @@ impl Contactish for GarbageContact {
     where
         T: AsRef<str>,
     {
-        GarbageContact(garbage.as_ref().to_string())
+        GarbageContact(garbage.as_ref().into())
     }
 
     fn set_comment<T>(mut self, garbage: T) -> Self
     where
         T: AsRef<str>,
     {
-        self.0 = garbage.as_ref().to_string();
+        self.0 = garbage.as_ref().into();
         self
     }
 
@@ -277,7 +302,7 @@ impl fmt::Debug for Contact {
             "Contact({}{}{})",
             match self.name() {
                 Some(n) => format!("\"{}\" ", n),
-                None => "".to_string(),
+                None => "".into(),
             },
             match self.comment() {
                 Some(c) => {
@@ -287,13 +312,22 @@ impl fmt::Debug for Contact {
                         format!("Garbage: \"{}\"", c)
                     }
                 }
-                None => "".to_string(),
+                None => "".into(),
             },
             match self.email() {
                 Some(e) => format!("<{}>", e),
-                None => "".to_string(),
+                None => "".into(),
             }
         )
+    }
+}
+
+impl fmt::Display for Contact {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Contact::Garbage(_) => write!(f, ""),
+            Contact::Email(e) => write!(f, "{}", e),
+        }
     }
 }
 
@@ -309,11 +343,100 @@ impl From<EmailContact> for Contact {
     }
 }
 
-pub(crate) type Contacts = Vec<Contact>;
+#[derive(Debug, Clone, Default)]
+pub struct Contacts {
+    pub contacts: Vec<Contact>,
+}
 
-/// A group with a name and a Vec of [`Contact`]s
+impl Contacts {
+    pub fn new() -> Self {
+        Self {
+            contacts: Vec::new(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.contacts.len()
+    }
+}
+
+impl Contactsish for Vec<Contact> {
+    fn as_contacts(self) -> Contacts {
+        Contacts::from(self)
+    }
+}
+
+impl Contactsish for Contacts {
+    fn as_contacts(self) -> Contacts {
+        self
+    }
+}
+
+impl Deref for Contacts {
+    type Target = [Contact];
+
+    fn deref<'a>(&'a self) -> &'a [Contact] {
+        self.contacts.as_slice()
+    }
+}
+
+impl<'a, 'b> IntoIterator for &'a Contacts {
+    type Item = &'a Contact;
+    type IntoIter = std::slice::Iter<'a, Contact>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.contacts.iter()
+    }
+}
+
+impl IntoIterator for Contacts {
+    type Item = Contact;
+    type IntoIter = std::vec::IntoIter<Contact>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.contacts.into_iter()
+    }
+}
+
+impl FromIterator<Contact> for Contacts {
+    fn from_iter<I: IntoIterator<Item = Contact>>(iter: I) -> Contacts {
+        let mut contacts = Contacts::new();
+        contacts.contacts = Vec::<Contact>::from_iter(iter);
+        contacts
+    }
+}
+
+impl From<Vec<Contact>> for Contacts {
+    fn from(s: Vec<Contact>) -> Self {
+        Self { contacts: s }
+    }
+}
+
+impl From<Vec<Contact>> for AddressList {
+    fn from(s: Vec<Contact>) -> Self {
+        Self::Contacts(Contacts { contacts: s })
+    }
+}
+
+impl fmt::Display for Contacts {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let trim: &[_] = &[' ', ','];
+        write!(
+            f,
+            "{}",
+            self.contacts
+                .iter()
+                .map(|c| format!("{}", c))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .trim_matches(trim),
+        )
+    }
+}
+
+/// A group with a name and [`Contacts`]
 ///
-/// [`Contact`]: enum.Contact.html
+/// [`Contacts`]: Struct.Contacts.html
 #[derive(Debug, Clone, Default)]
 pub struct Group {
     pub name: String,
@@ -326,12 +449,15 @@ impl Group {
         T: AsRef<str>,
     {
         let mut new: Self = Default::default();
-        new.name = name.as_ref().to_string();
+        new.name = name.as_ref().into();
         new
     }
 
-    pub fn set_contacts(mut self, contacts: Contacts) -> Self {
-        self.contacts = contacts;
+    pub fn set_contacts<T>(mut self, contacts: T) -> Self
+    where
+        T: Contactsish,
+    {
+        self.contacts = contacts.as_contacts();
         self
     }
 }
@@ -374,9 +500,15 @@ where
 {
     fn from(string: T) -> Group {
         Group {
-            name: string.as_ref().to_string(),
+            name: string.as_ref().into(),
             contacts: Contacts::new(),
         }
+    }
+}
+
+impl fmt::Display for Group {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {};", self.name, self.contacts)
     }
 }
 
@@ -484,6 +616,15 @@ impl DeepEq for AddressList {
                     false
                 }
             }
+        }
+    }
+}
+
+impl Contactsish for AddressList {
+    fn as_contacts(self) -> Contacts {
+        match self {
+            AddressList::Contacts(c) => c,
+            AddressList::Group(g) => g.contacts,
         }
     }
 }
