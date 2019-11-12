@@ -3,6 +3,11 @@ use std::fmt;
 use std::iter::{FromIterator, IntoIterator, Iterator};
 use std::ops::Deref;
 
+#[cfg(feature="mailparse-conversions")]
+use std::convert::TryInto;
+#[cfg(feature="mailparse-conversions")]
+use super::error::Error;
+
 /// Check if all fields are the same rather than just a subset ("deep equals")
 pub trait DeepEq<Rhs = Self> {
     fn deep_eq(&self, other: &Rhs) -> bool;
@@ -343,6 +348,41 @@ impl From<EmailContact> for Contact {
     }
 }
 
+#[cfg(feature = "mailparse-conversions")]
+impl TryInto<mailparse::MailAddr> for Contact {
+    type Error = Error;
+
+    fn try_into(self) -> Result<mailparse::MailAddr, Error> {
+        match self {
+            Contact::Garbage(_) => Err(Error::UnexpectedError(
+                "Can't convert Garbage into MailAddr".into())
+            ),
+            Contact::Email(_) => Ok(mailparse::MailAddr::Single(self.try_into()?)),
+        }
+    }
+}
+
+#[cfg(feature = "mailparse-conversions")]
+impl TryInto<mailparse::SingleInfo> for Contact {
+    type Error = Error;
+
+    fn try_into(self) -> Result<mailparse::SingleInfo, Error> {
+        match self {
+            Contact::Garbage(_) => Err(Error::UnexpectedError(
+                "Can't convert Garbage into SingleInfo".into())
+            ),
+            Contact::Email(e) => Ok(mailparse::SingleInfo {
+                display_name: e.name,
+                addr: e.email
+            }),
+        }
+    }
+}
+
+/// Container for [`Contact`]s
+///
+/// [`Contact`]: enum.Contact.html
+///
 #[derive(Debug, Clone, Default)]
 pub struct Contacts {
     pub contacts: Vec<Contact>,
@@ -380,7 +420,7 @@ impl Deref for Contacts {
     }
 }
 
-impl<'a, 'b> IntoIterator for &'a Contacts {
+impl<'a> IntoIterator for &'a Contacts {
     type Item = &'a Contact;
     type IntoIter = std::slice::Iter<'a, Contact>;
 
@@ -412,12 +452,6 @@ impl From<Vec<Contact>> for Contacts {
     }
 }
 
-impl From<Vec<Contact>> for AddressList {
-    fn from(s: Vec<Contact>) -> Self {
-        Self::Contacts(Contacts { contacts: s })
-    }
-}
-
 impl fmt::Display for Contacts {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let trim: &[_] = &[' ', ','];
@@ -434,9 +468,20 @@ impl fmt::Display for Contacts {
     }
 }
 
+#[cfg(feature = "mailparse-conversions")]
+impl TryInto<Vec<mailparse::SingleInfo>> for Contacts {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Vec<mailparse::SingleInfo>, Error> {
+        self.into_iter()
+            .map(|c| c.try_into())
+            .collect()
+    }
+}
+
 /// A group with a name and [`Contacts`]
 ///
-/// [`Contacts`]: Struct.Contacts.html
+/// [`Contacts`]: struct.Contacts.html
 #[derive(Debug, Clone, Default)]
 pub struct Group {
     pub name: String,
@@ -498,11 +543,25 @@ impl<T> From<T> for Group
 where
     T: AsRef<str>,
 {
-    fn from(string: T) -> Group {
-        Group {
+    fn from(string: T) -> Self {
+        Self {
             name: string.as_ref().into(),
             contacts: Contacts::new(),
         }
+    }
+}
+
+#[cfg(feature = "mailparse-conversions")]
+impl TryInto<mailparse::MailAddr> for Group {
+    type Error = Error;
+
+    fn try_into(self) -> Result<mailparse::MailAddr, Error> {
+        Ok(mailparse::MailAddr::Group(mailparse::GroupInfo {
+            group_name: self.name,
+            addrs: self.contacts.into_iter()
+            .map(|c| c.try_into())
+            .collect::<Result<Vec<_>, Error>>()?,
+        }))
     }
 }
 
@@ -552,6 +611,15 @@ impl AddressList {
         match self {
             AddressList::Contacts(c) => &c,
             AddressList::Group(g) => &g.contacts,
+        }
+    }
+}
+
+impl fmt::Display for AddressList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AddressList::Contacts(c) => write!(f, "{}", c),
+            AddressList::Group(g) => write!(f, "{}", g),
         }
     }
 }
@@ -620,6 +688,12 @@ impl DeepEq for AddressList {
     }
 }
 
+impl From<Vec<Contact>> for AddressList {
+    fn from(s: Vec<Contact>) -> Self {
+        Self::Contacts(Contacts { contacts: s })
+    }
+}
+
 impl Contactsish for AddressList {
     fn as_contacts(self) -> Contacts {
         match self {
@@ -638,5 +712,19 @@ impl From<Contacts> for AddressList {
 impl From<Group> for AddressList {
     fn from(group: Group) -> AddressList {
         AddressList::Group(group)
+    }
+}
+
+#[cfg(feature = "mailparse-conversions")]
+impl TryInto<Vec<mailparse::MailAddr>> for AddressList {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Vec<mailparse::MailAddr>, Error> {
+        match self {
+            AddressList::Group(g) => Ok(vec![g.try_into()?]),
+            AddressList::Contacts(c) => c.into_iter()
+                .map(|ic| ic.try_into())
+                .collect()
+        }
     }
 }

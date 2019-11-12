@@ -17,3 +17,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 pest = "2"
 pest_derive = "2"
+mailparse = { version = "0.9", optional = true }
+
+[features]
+mailparse-conversions = ["mailparse"]
