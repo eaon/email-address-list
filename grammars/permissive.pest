@@ -31,9 +31,12 @@ mailbox_angle = {
 }
 
 contact = {
+    email ~ name ~ email_angle |
     email ~ WS* ~ "(" ~ name ~ ")" |
+    email ~ ">" |
     email |
     email_angle |
+    name ~ email_angle ~ "(" ~ comment* ~ ")" |
     name ~ email_angle |
     name ~ WS* ~ "(" ~ comment* ~ ")" ~ WS* ~ email_angle |
     "\"" ~ email ~ "\"" |
