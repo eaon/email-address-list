@@ -114,26 +114,22 @@ impl PartialEq for EmailContact {
 /// same)
 impl DeepEq for EmailContact {
     fn deep_eq(&self, other: &EmailContact) -> bool {
-        self.email == other.email
-            && self.name == other.name
-            && self.comment == other.comment
+        self.email == other.email && self.name == other.name && self.comment == other.comment
     }
 }
 
 impl fmt::Display for EmailContact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(n) = &self.name {
+            write!(f, "\"{}\" ", n.replace("\\", "\\\\").replace("\"", "\\\""))?;
+            if let Some(c) = &self.comment {
+                write!(f, "({}) ", c)?;
+            }
+        }
         write!(
             f,
-            "{}{}{}",
-            match &self.name {
-                Some(n) => format!("\"{}\" ", n),
-                None => "".into(),
-            },
-            match &self.comment() {
-                Some(c) => format!("({}) ", c),
-                None => "".into(),
-            },
-            format!("<{}>", self.email),
+            "<{}>",
+            self.email.replace("\\", "\\\\").replace("\"", "\\\""),
         )
     }
 }
@@ -355,8 +351,8 @@ impl TryInto<mailparse::MailAddr> for Contact {
     fn try_into(self) -> Result<mailparse::MailAddr, Error> {
         match self {
             Contact::Garbage(_) => Err(Error::UnexpectedError(
-                "Can't convert Garbage into MailAddr".into())
-            ),
+                "Can't convert Garbage into MailAddr".into(),
+            )),
             Contact::Email(_) => Ok(mailparse::MailAddr::Single(self.try_into()?)),
         }
     }
@@ -369,11 +365,11 @@ impl TryInto<mailparse::SingleInfo> for Contact {
     fn try_into(self) -> Result<mailparse::SingleInfo, Error> {
         match self {
             Contact::Garbage(_) => Err(Error::UnexpectedError(
-                "Can't convert Garbage into SingleInfo".into())
-            ),
+                "Can't convert Garbage into SingleInfo".into(),
+            )),
             Contact::Email(e) => Ok(mailparse::SingleInfo {
                 display_name: e.name,
-                addr: e.email
+                addr: e.email,
             }),
         }
     }
@@ -473,9 +469,7 @@ impl TryInto<Vec<mailparse::SingleInfo>> for Contacts {
     type Error = Error;
 
     fn try_into(self) -> Result<Vec<mailparse::SingleInfo>, Error> {
-        self.into_iter()
-            .map(|c| c.try_into())
-            .collect()
+        self.into_iter().map(|c| c.try_into()).collect()
     }
 }
 
@@ -509,9 +503,7 @@ impl Group {
 
 impl PartialEq for Group {
     fn eq(&self, other: &Group) -> bool {
-        if self.name != other.name
-            || self.contacts.len() != other.contacts.len()
-        {
+        if self.name != other.name || self.contacts.len() != other.contacts.len() {
             return false;
         }
         for (i, contact) in self.contacts.iter().enumerate() {
@@ -525,9 +517,7 @@ impl PartialEq for Group {
 
 impl DeepEq for Group {
     fn deep_eq(&self, other: &Group) -> bool {
-        if self.name != other.name
-            || self.contacts.len() != other.contacts.len()
-        {
+        if self.name != other.name || self.contacts.len() != other.contacts.len() {
             return false;
         }
         for (i, contact) in self.contacts.iter().enumerate() {
@@ -558,16 +548,23 @@ impl TryInto<mailparse::MailAddr> for Group {
     fn try_into(self) -> Result<mailparse::MailAddr, Error> {
         Ok(mailparse::MailAddr::Group(mailparse::GroupInfo {
             group_name: self.name,
-            addrs: self.contacts.into_iter()
-            .map(|c| c.try_into())
-            .collect::<Result<Vec<_>, Error>>()?,
+            addrs: self
+                .contacts
+                .into_iter()
+                .map(|c| c.try_into())
+                .collect::<Result<Vec<_>, Error>>()?,
         }))
     }
 }
 
 impl fmt::Display for Group {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {};", self.name, self.contacts)
+        write!(
+            f,
+            "\"{}\": {};",
+            self.name.replace("\\", "\\\\").replace("\"", "\\\""),
+            self.contacts
+        )
     }
 }
 
@@ -581,7 +578,7 @@ impl fmt::Display for Group {
 /// assert!(latvian.contacts()[0].email().unwrap() == "piemērs@example.org");
 ///
 /// let sudanese: AddressList = Group::new("Conto").into();
-/// assert!(sudanese.group_name().unwrap() == &"Conto".to_string());
+/// assert!(sudanese.group_name() == Some(&"Conto".to_string()));
 /// ```
 #[derive(Debug, Clone)]
 pub enum AddressList {
@@ -722,9 +719,7 @@ impl TryInto<Vec<mailparse::MailAddr>> for AddressList {
     fn try_into(self) -> Result<Vec<mailparse::MailAddr>, Error> {
         match self {
             AddressList::Group(g) => Ok(vec![g.try_into()?]),
-            AddressList::Contacts(c) => c.into_iter()
-                .map(|ic| ic.try_into())
-                .collect()
+            AddressList::Contacts(c) => c.into_iter().map(|ic| ic.try_into()).collect(),
         }
     }
 }

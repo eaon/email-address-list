@@ -42,6 +42,10 @@ fn eq() {
             " (Invalid) Messy  <horrible@formatting.example.org>;",
         ),
         concat!(
+            r#"I Know People <with@very.terrible> (email "clients (that don't care)"),"#,
+            "<whydidweletpeopletype@emailaddress.es>>, its@bad.idea",
+        ),
+        concat!(
             ",koordination@netznetz.net, Kunasek; Heinzi <heinzi@example.org>,",
             " <this@is.hell>,   ,  ,",
         ),
@@ -50,11 +54,12 @@ fn eq() {
             r#"<member2@example.org>, "3, Member" (via example mailing list) "#,
             "<list@example.org>;",
         ),
-        "Last Name, First Name <email@addre.ss>, another@one.two",
+        "Last Name, First Name <'email@addre.ss'>, another@one.two",
         "Versteckte-Empfaenger:;",
         "Undisclosed-Recipients: <>;",
         "<Undisclosed-Recipients: <>;>",
         "<Undisclosed-Recipients:;>",
+        "inventing@new.email.addresses.for.fun>, please@make.it <please@make.it>, stop@stop.com",
     ];
     let address_lists: Vec<AddressList> = vec![
         Group::new("Garbage")
@@ -67,13 +72,19 @@ fn eq() {
             .into(),
         Group::new("RFC822::Still a pain in 2018")
             .set_contacts(vec![
-                Contact::new("for@real.example.com")
-                    .set_name("Example; Email: Add@ress.es"),
+                Contact::new("for@real.example.com").set_name("Example; Email: Add@ress.es"),
                 Contact::new("messy@example.net"),
-                Contact::new("horrible@formatting.example.org")
-                    .set_name("Very (Invalid) Messy"),
+                Contact::new("horrible@formatting.example.org").set_name("Very (Invalid) Messy"),
             ])
             .into(),
+        vec![
+            Contact::new("with@very.terrible")
+                .set_name("I Know People")
+                .set_comment(r#"email "clients (that don't care)""#),
+            Contact::new("whydidweletpeopletype@emailaddress.es"),
+            Contact::new("its@bad.idea"),
+        ]
+        .into(),
         vec![
             Contact::new("koordination@netznetz.net"),
             Contact::new("heinzi@example.org").set_name("Kunasek; Heinzi"),
@@ -98,6 +109,12 @@ fn eq() {
         Group::new("Undisclosed-Recipients").into(),
         Group::new("Undisclosed-Recipients").into(),
         Group::new("Undisclosed-Recipients").into(),
+        vec![
+            Contact::new("inventing@new.email.addresses.for.fun"),
+            Contact::new("please@make.it"),
+            Contact::new("stop@stop.com"),
+        ]
+        .into(),
     ];
     assert!(literals.len() == address_lists.len());
     for (i, address_list) in address_lists.iter().enumerate() {

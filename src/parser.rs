@@ -23,16 +23,12 @@ fn parse_contact_pair(pair: Pair<'_, Rule>) -> Option<Result<Contact>> {
                 None => return Some(Err(invalid_empty("name"))),
             },
             Rule::email | Rule::mailbox => c = c.set_email(inner.as_str()),
-            Rule::email_angle | Rule::mailbox_angle => {
-                match inner.into_inner().next() {
-                    Some(s) => c = c.set_email(s.as_str()),
-                    None => {
-                        return Some(Err(invalid_empty(
-                            "email_angle or mailbox_angle",
-                        )));
-                    }
+            Rule::email_angle | Rule::mailbox_angle => match inner.into_inner().next() {
+                Some(s) => c = c.set_email(s.as_str()),
+                None => {
+                    return Some(Err(invalid_empty("email_angle or mailbox_angle")));
                 }
-            }
+            },
             Rule::comment => c = c.set_comment(inner.as_str()),
             Rule::garbage => {
                 let garbage = inner.as_str();
@@ -40,6 +36,14 @@ fn parse_contact_pair(pair: Pair<'_, Rule>) -> Option<Result<Contact>> {
                     return None;
                 }
                 return Some(Ok(GarbageContact::new(garbage).into()));
+            }
+            Rule::garbage_nongreedy => {
+                let garbage = inner.as_str().trim();
+                // garbage_nongreedy is special in the sense that we know that a mailbox
+                // precedes it - the only occurance of this I've seen was when domain names were
+                // separated by whitespace
+                let new_email = format!("{}{}", c.email().unwrap(), garbage);
+                c = c.set_email(new_email);
             }
             _ => return Some(Err(invalid_nesting("contact"))),
         }
@@ -56,8 +60,7 @@ fn parse_pairs(pairs: Pairs<'_, Rule>) -> Result<AddressList> {
                 for inner in pair.into_inner() {
                     match inner.as_rule() {
                         Rule::name => {
-                            group.name =
-                                inner.into_inner().as_str().to_string();
+                            group.name = inner.into_inner().as_str().to_string();
                         }
                         Rule::contact_list => {
                             group.contacts = inner
