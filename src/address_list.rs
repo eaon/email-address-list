@@ -3,10 +3,10 @@ use std::fmt;
 use std::iter::{FromIterator, IntoIterator, Iterator};
 use std::ops::Deref;
 
-#[cfg(feature="mailparse-conversions")]
-use std::convert::TryInto;
-#[cfg(feature="mailparse-conversions")]
+#[cfg(feature = "mailparse-conversions")]
 use super::error::Error;
+#[cfg(feature = "mailparse-conversions")]
+use std::convert::TryInto;
 
 /// Check if all fields are the same rather than just a subset ("deep equals")
 pub trait DeepEq<Rhs = Self> {
@@ -33,11 +33,17 @@ pub trait Contactish {
     fn set_comment<T>(self, comment: T) -> Self
     where
         T: AsRef<str>;
+    fn as_contact(self) -> Contact;
 }
 
 /// For everything that has contacts
 pub trait Contactsish {
+    fn len(&self) -> usize;
     fn as_contacts(self) -> Contacts;
+    fn add<C>(&mut self, contact: C)
+    where
+        C: Contactish;
+    fn contains(&self, contact: &Contact) -> bool;
 }
 
 /// A contact with at least an email address
@@ -100,6 +106,10 @@ impl Contactish for EmailContact {
             self.comment = Some(comment.into());
         }
         self
+    }
+
+    fn as_contact(self) -> Contact {
+        Contact::from(self)
     }
 }
 
@@ -181,6 +191,10 @@ impl Contactish for GarbageContact {
 
     fn set_name<T>(self, _: T) -> Self {
         self
+    }
+
+    fn as_contact(self) -> Contact {
+        Contact::from(self)
     }
 }
 
@@ -279,6 +293,10 @@ impl Contactish for Contact {
             Contact::Email(c) => c.set_email(email).into(),
             Contact::Garbage(g) => g.set_email(email).into(),
         }
+    }
+
+    fn as_contact(self) -> Self {
+        self
     }
 }
 
@@ -390,21 +408,47 @@ impl Contacts {
             contacts: Vec::new(),
         }
     }
-
-    pub fn len(&self) -> usize {
-        self.contacts.len()
-    }
 }
 
 impl Contactsish for Vec<Contact> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
     fn as_contacts(self) -> Contacts {
         Contacts::from(self)
+    }
+
+    fn add<C>(&mut self, contact: C)
+    where
+        C: Contactish,
+    {
+        self.push(contact.as_contact());
+    }
+
+    fn contains(&self, contact: &Contact) -> bool {
+        self.iter().any(|y| y == contact)
     }
 }
 
 impl Contactsish for Contacts {
+    fn len(&self) -> usize {
+        self.contacts.len()
+    }
+
     fn as_contacts(self) -> Contacts {
         self
+    }
+
+    fn add<C>(&mut self, contact: C)
+    where
+        C: Contactish,
+    {
+        self.contacts.push(contact.as_contact());
+    }
+
+    fn contains(&self, contact: &Contact) -> bool {
+        self.contacts.contains(contact)
     }
 }
 
@@ -538,6 +582,27 @@ where
             name: string.as_ref().into(),
             contacts: Contacts::new(),
         }
+    }
+}
+
+impl Contactsish for Group {
+    fn len(&self) -> usize {
+        self.contacts.len()
+    }
+
+    fn as_contacts(self) -> Contacts {
+        self.contacts
+    }
+
+    fn add<C>(&mut self, contact: C)
+    where
+        C: Contactish,
+    {
+        self.contacts.add(contact.as_contact());
+    }
+
+    fn contains(&self, contact: &Contact) -> bool {
+        self.contacts.contains(contact)
     }
 }
 
@@ -692,23 +757,47 @@ impl From<Vec<Contact>> for AddressList {
 }
 
 impl Contactsish for AddressList {
+    fn len(&self) -> usize {
+        match self {
+            Self::Contacts(c) => c.len(),
+            Self::Group(g) => g.contacts.len(),
+        }
+    }
+
     fn as_contacts(self) -> Contacts {
         match self {
-            AddressList::Contacts(c) => c,
-            AddressList::Group(g) => g.contacts,
+            Self::Contacts(c) => c,
+            Self::Group(g) => g.contacts,
+        }
+    }
+
+    fn add<C>(&mut self, contact: C)
+    where
+        C: Contactish,
+    {
+        match self {
+            Self::Contacts(c) => c.add(contact),
+            Self::Group(g) => g.add(contact),
+        }
+    }
+
+    fn contains(&self, contact: &Contact) -> bool {
+        match self {
+            Self::Contacts(c) => c.contains(contact),
+            Self::Group(g) => g.contains(contact),
         }
     }
 }
 
 impl From<Contacts> for AddressList {
-    fn from(contacts: Contacts) -> AddressList {
-        AddressList::Contacts(contacts)
+    fn from(contacts: Contacts) -> Self {
+        Self::Contacts(contacts)
     }
 }
 
 impl From<Group> for AddressList {
     fn from(group: Group) -> AddressList {
-        AddressList::Group(group)
+        Self::Group(group)
     }
 }
 
@@ -718,8 +807,8 @@ impl TryInto<Vec<mailparse::MailAddr>> for AddressList {
 
     fn try_into(self) -> Result<Vec<mailparse::MailAddr>, Error> {
         match self {
-            AddressList::Group(g) => Ok(vec![g.try_into()?]),
-            AddressList::Contacts(c) => c.into_iter().map(|ic| ic.try_into()).collect(),
+            Self::Group(g) => Ok(vec![g.try_into()?]),
+            Self::Contacts(c) => c.into_iter().map(|ic| ic.try_into()).collect(),
         }
     }
 }

@@ -8,6 +8,7 @@ fn big_list_of_naughty_strings() {
         .args(&["https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt"])
         .output()
         .unwrap();
+
     let mut body = String::from_utf8(naughty.stdout).unwrap();
     let mut lines = body.as_mut_str().lines();
     while let Some(line) = lines.next() {
@@ -42,8 +43,9 @@ fn eq() {
             " (Invalid) Messy  <horrible@formatting.example.org>;",
         ),
         concat!(
-            r#"I Know People <with@very.terrible> (email "clients (that don't care)"),"#,
-            "<whydidweletpeopletype@emailaddress.es>>, its@bad.idea",
+            r#"I Know People <with@very.terrible> (email "clients (that don't care)");"#,
+            "<whydidweletpeopletype@emailaddress.es>>; its@bad.idea; its@lsotheinspiration.for; ",
+            "this@library",
         ),
         concat!(
             ",koordination@netznetz.net, Kunasek; Heinzi <heinzi@example.org>,",
@@ -55,11 +57,20 @@ fn eq() {
             "<list@example.org>;",
         ),
         "Last Name, First Name <'email@addre.ss'>, another@one.two",
-        "Versteckte-Empfaenger:;",
+        "Versteckte-Empfaenger:; <justkidding@twoaredisclos.ed>, thisis@the.next (One, No More)",
         "Undisclosed-Recipients: <>;",
         "<Undisclosed-Recipients: <>;>",
         "<Undisclosed-Recipients:;>",
         "inventing@new.email.addresses.for.fun>, please@make.it <please@make.it>, stop@stop.com",
+        concat!(
+            r#""I wish email would go away" <go@wa.y>; butitwont@foralong.time; "#,
+            r#"It's really sad <imo@opinion.mine>"#
+        ),
+        "Hello <hello@email.rofl>, <something@okokok.xxq;icant@any.more>, So Much <bad@stu.ff> ",
+        concat!(
+            "<oneaddress@without.delimiter> <twoaddresses@without.delimiter>, ",
+            "oneaddress@with.delimiter",
+        ),
     ];
     let address_lists: Vec<AddressList> = vec![
         Group::new("Garbage")
@@ -83,6 +94,8 @@ fn eq() {
                 .set_comment(r#"email "clients (that don't care)""#),
             Contact::new("whydidweletpeopletype@emailaddress.es"),
             Contact::new("its@bad.idea"),
+            Contact::new("its@lsotheinspiration.for"),
+            Contact::new("this@library"),
         ]
         .into(),
         vec![
@@ -105,7 +118,12 @@ fn eq() {
             Contact::new("another@one.two"),
         ]
         .into(),
-        Group::new("Versteckte-Empfaenger").into(),
+        Group::new("Versteckte-Empfaenger")
+            .set_contacts(vec![
+                Contact::new("justkidding@twoaredisclos.ed"),
+                Contact::new("thisis@the.next").set_name("One, No More"),
+            ])
+            .into(),
         Group::new("Undisclosed-Recipients").into(),
         Group::new("Undisclosed-Recipients").into(),
         Group::new("Undisclosed-Recipients").into(),
@@ -113,6 +131,25 @@ fn eq() {
             Contact::new("inventing@new.email.addresses.for.fun"),
             Contact::new("please@make.it"),
             Contact::new("stop@stop.com"),
+        ]
+        .into(),
+        vec![
+            Contact::new("go@wa.y").set_name("I wish email would go away"),
+            Contact::new("butitwont@foralong.time"),
+            Contact::new("imo@opinion.mine").set_name("It's really sad"),
+        ]
+        .into(),
+        vec![
+            Contact::new("hello@email.rofl").set_name("Hello"),
+            Contact::new("something@okokok.xxq"),
+            Contact::new("icant@any.more"),
+            Contact::new("bad@stu.ff").set_name("So Much"),
+        ]
+        .into(),
+        vec![
+            Contact::new("oneaddress@without.delimiter"),
+            Contact::new("twoaddresses@without.delimiter"),
+            Contact::new("oneaddress@with.delimiter"),
         ]
         .into(),
     ];

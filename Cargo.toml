@@ -15,8 +15,10 @@ appveyor = { repository = "eaon/email-address-list", service = "git", id = "c3ek
 maintenance = { status = "actively-developed" }
 
 [dependencies]
+lazy_static = "1"
 pest = "2"
 pest_derive = "2"
+regex = "1"
 mailparse = { version = "0.9", optional = true }
 
 [features]

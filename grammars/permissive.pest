@@ -10,20 +10,21 @@ garbage_nongreedy = @{ garbage_inside+ }
 garbage_inside = { (!(NL | ",") ~ ANY) }
 
 contact_list = {
-    (",")? ~ contact ~ (WS* ~ (",") ~ WS* ~ contact)* ~ (",")?
+    ("," | ";,")? ~ contact ~ (WS* ~ ("," | ";,") ~ WS* ~ contact)* ~ ("," | ";,")?
 }
 
 group = {
+    name ~ WS* ~ ":" ~ WS* ~ ";" ~ contact_list |
     name ~ WS* ~ ":" ~ WS* ~ ";" |
     name ~ WS* ~ ":" ~ WS* ~ "<" ~ WS* ~ ">" ~ WS* ~ ";" |
     name ~ WS* ~ ":" ~ WS* ~ contact_list ~ WS* ~ ";" |
     "<" ~ name ~ WS* ~ ":" ~ WS* ~ "<"? ~ WS* ~ ">"? ~ WS* ~ ";" ~ WS* ~ ">" |
-    "<" ~ name ~ WS* ~ ":" ~ WS* ~ contact_list ~ WS* ~ ";" ~ WS* ~ ">" |
-    name ~ WS* ~ ":" ~ WS* ~ ";" ~ contact_list
+    "<" ~ name ~ WS* ~ ":" ~ WS* ~ contact_list ~ WS* ~ ";" ~ WS* ~ ">"
 }
 
 name = {
     WS* ~ "\"" ~ escaped ~ "\"" |
+    WS* ~ "'" ~ escaped_single ~ "'" |
     WS* ~ clear
 }
 
@@ -36,15 +37,22 @@ mailbox_angle = {
     WS* ~ "<" ~ mailbox ~ ("," | "." | ";")? ~ ">" ~ WS*
 }
 
+malformed_comment_name = @{
+    comment
+}
+
 contact = {
     email ~ email_angle ~ "(" ~ comment ~ ")" |
-    email ~ "(" ~ comment ~ ")" ~ email_angle |
+    email ~ WS* ~ "(" ~ comment ~ ")" ~ WS* ~ email_angle |
     email ~ email_angle |
     email ~ name ~ email_angle |
     email ~ WS* ~ "(" ~ name ~ ")" |
+    email ~ WS* ~ "(" ~ malformed_comment_name ~ ")" |
     email ~ ">" |
     email ~ (".")? |
+    name ~ WS* ~ "<" ~ WS* ~ ">" ~ WS* ~ email |
     email_angle ~ ">" |
+    email_angle ~ "(" ~ malformed_comment_name ~ ")" |
     email_angle |
     name ~ email_angle ~ "(" ~ comment ~ ")" |
     name ~ email_angle ~ ">" |
@@ -52,12 +60,15 @@ contact = {
     name ~ "(" ~ comment ~ ")" ~ email_angle |
     "\"" ~ email ~ "\"" |
     (" " | "<" | ">" | ",")* ~ email |
+    malformed ~ email_angle ~ ">" |
     malformed ~ email_angle |
     name ~ WS* ~ mailbox_angle |
     malformed ~ WS* ~ mailbox_angle |
     mailbox ~ WS* ~ "(" ~ name ~ ")" |
     mailbox ~ garbage_nongreedy |
     mailbox ~ (".")? |
+    name ~ "<" ~ email |
+    malformed ~ "<" ~ email |
     garbage
 }
 
@@ -67,7 +78,7 @@ mailbox = @{ local+ ~ "@" ~ domain+ }
 
 local = {
     "\"" ~ escaped ~ "\"" |
-    (!("@" | "<" | ">" | ":" | "," | WS) ~ ANY)+
+    (!("@" | "<" | ">" | ":" | "," | "'" | WS) ~ ANY)+
 }
 
 // XXX make sure we implement https://tools.ietf.org/html/rfc5894#page-9
@@ -79,6 +90,11 @@ domain = {
 
 escaped = @{
     (!("\\" | "\"" | NL) ~ ANY |
+     "\\" ~ ANY)*
+}
+
+escaped_single = @{
+    (!("\\" | "'" | NL) ~ ANY |
      "\\" ~ ANY)*
 }
 

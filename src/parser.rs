@@ -1,6 +1,8 @@
+use lazy_static::*;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as PestParser;
 use pest_derive::Parser;
+use regex::Regex;
 
 use crate::error::Error::*;
 use crate::error::*;
@@ -8,6 +10,14 @@ use crate::error::*;
 use std::convert::AsRef;
 
 use crate::address_list::*;
+
+lazy_static! {
+    static ref CSV: Regex = Regex::new(
+        r#"[^",]*"[^"\\]*\\.[^"\\]+"[^,"]+@[^,"]+|[^",]*".*?"[^,"]*@[^,"]*|[^,"]+@[^,"]+"#,
+    )
+    .unwrap();
+    static ref SSV: Regex = Regex::new(r#"[^;"]?".*?"[^;"]*|[^;"]*"#).unwrap();
+}
 
 #[derive(Parser)]
 #[grammar = "../grammars/permissive.pest"]
@@ -17,7 +27,7 @@ fn parse_contact_pair(pair: Pair<'_, Rule>) -> Option<Result<Contact>> {
     let mut c: EmailContact = Default::default();
     for inner in pair.into_inner() {
         match inner.as_rule() {
-            Rule::malformed => c = c.set_name(inner.as_str()),
+            Rule::malformed | Rule::malformed_comment_name => c = c.set_name(inner.as_str()),
             Rule::name => match inner.into_inner().next() {
                 Some(s) => c = c.set_name(s.as_str()),
                 None => return Some(Err(invalid_empty("name"))),
@@ -91,14 +101,15 @@ fn parse_pairs(pairs: Pairs<'_, Rule>) -> Result<AddressList> {
     Ok(AddressList::from(contacts))
 }
 
-fn check_empty<T>(address_list: &T) -> Result<()>
+fn check_empty<T>(address_list: &T) -> Result<&str>
 where
     T: AsRef<str>,
     T: ?Sized,
 {
-    match address_list.as_ref().trim() {
+    let input = address_list.as_ref().trim();
+    match input {
         "" => Err(Error::Empty),
-        _ => Ok(()),
+        _ => Ok(input),
     }
 }
 
@@ -164,11 +175,115 @@ where
     T: AsRef<str>,
     T: ?Sized,
 {
-    check_empty(address_list)?;
-    Ok(parse_pairs(Parser::parse(
-        Rule::address_list,
-        address_list.as_ref().trim(),
-    )?)?)
+    let input = check_empty(address_list)?;
+    let mut output = parse_pairs(Parser::parse(Rule::address_list, input)?)?;
+
+    /// Make estimation of correct parsing easier
+    ///
+    /// Remove all common characters, the lengths of this output should be roughly equal for what
+    /// we put in and what we plan to put out.
+    fn normalise(input: &str) -> String {
+        (&[",", "\"", "'", "<", ">"]
+            .iter()
+            .fold(input.to_string(), |o, p| o.replace(p, "")))
+            .replace(char::is_whitespace, "")
+    }
+
+    /// Comma separated values optimised for the way they are used in address lists
+    fn csv(input: &str) -> Vec<String> {
+        CSV.captures_iter(input)
+            .filter_map(|c| {
+                if let Some(c) = c.get(0) {
+                    return Some(c.as_str().into());
+                }
+                None
+            })
+            .collect()
+    }
+
+    /// Break apart undelimited addresses if they are present and put them in the appropriate place
+    /// of the list
+    // XXX add a way to fish out both addresses from something like:
+    // one@example.org Firstname Surname <two@example.org>
+    fn expand_undelimited(mut input: Vec<String>) -> Vec<String> {
+        let mut output = <Vec<String>>::new();
+        let mut r = 0;
+        for i in 0..input.len() {
+            let j = &input[i - r];
+            if j.contains('>') {
+                for s in j.split('>') {
+                    if s.contains('<') {
+                        output.push(format!("{}>", s));
+                    } else if s == "" {
+                        // don't do anything with empty bits
+                    } else {
+                        output.push(s.into());
+                    }
+                }
+                input.remove(i - r);
+            } else {
+                output.push(input.remove(i - r));
+            }
+            r += 1;
+        }
+        output
+    }
+
+    fn add_absent_contacts(input: &[String], output: &mut AddressList) -> Result<()> {
+        for contact in input.iter().map(|c| parse_contact(c)) {
+            let contact = contact?;
+            if let Contact::Email(_) = contact {
+                if !output.contains(&contact) {
+                    output.add(contact);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    let input_n = normalise(input);
+    let output_n = normalise(&format!("{}", output));
+
+    if input_n.len() > output_n.len() {
+        let input_c = csv(input);
+        // Due to the way some headers are malformed, the grammar cannot account for all ways in
+        // which data out there is separated, This check is for an educated guess about
+        // whether we have a ';' separated address list, and returns it if necessary
+        if let AddressList::Contacts(_) = output {
+            if input_n.contains(';') {
+                let sc_input = SSV.captures_iter(input).fold(String::from(""), |mut f, c| {
+                    if let Some(cpt) = c.get(0) {
+                        f.push_str(cpt.as_str());
+                        f.push(',');
+                    }
+                    f
+                });
+                let mut sc_output = parse_pairs(Parser::parse(
+                    Rule::address_list,
+                    &sc_input.trim_end_matches(','),
+                )?)?;
+                // If the semi-colon delimited output is bigger than the regular one we're likely
+                // a completely semi-colon separated list, however, we're still trying to find
+                // as many contacts as possible by looking for undelimited ones
+                if sc_output.len() > output.len() && sc_output.len() > input_c.len() {
+                    let sc_output_n = normalise(&format!("{}", sc_output));
+                    if input_n.len() > sc_output_n.len() {
+                        let sc_input_c_a = expand_undelimited(csv(&sc_input));
+                        add_absent_contacts(&sc_input_c_a, &mut sc_output)?;
+                    }
+                    return Ok(sc_output);
+                }
+            }
+        }
+
+        // Last resort, deal with split commas as individual contacts and build an AddressList from
+        // that
+        let input_c_a = expand_undelimited(input_c);
+        if input_c_a.len() > output.len() {
+            add_absent_contacts(&input_c_a, &mut output)?;
+        }
+    }
+    Ok(output)
 }
 
 /// Parse only a single [`Contact`], ignore the rest
@@ -224,8 +339,8 @@ where
     T: AsRef<str>,
     T: ?Sized,
 {
-    check_empty(contact)?;
-    let mut pairs = Parser::parse(Rule::contact, contact.as_ref().trim())?;
+    let contact = check_empty(contact)?;
+    let mut pairs = Parser::parse(Rule::contact, contact)?;
     if let Some(contact) = pairs.next() {
         if let Some(c) = parse_contact_pair(contact) {
             return c;
