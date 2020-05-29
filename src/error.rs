@@ -1,6 +1,5 @@
 use crate::parser::Rule;
 use std::convert::From;
-use std::error;
 use std::fmt;
 
 #[derive(Debug)]
@@ -10,25 +9,9 @@ pub enum Error {
     Empty,
 }
 
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match self {
-            Error::Empty => "Nothing to parse",
-            Error::UnexpectedError(e) => e,
-            _ => self.description(),
-        }
-    }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match self {
-            _ => Some(self),
-        }
-    }
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", error::Error::description(self))
+        write!(f, "{}", self)
     }
 }
 
