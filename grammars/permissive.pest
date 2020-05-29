@@ -30,11 +30,11 @@ name = {
 
 email_angle = {
     WS* ~ "<" ~ WS* ~ "'" ~ email ~ ("," | "." | ";")? ~ "'" ~ WS* ~ ">" ~ WS* |
-    WS* ~ "<" ~ email ~ ("," | "." | ";")? ~ ">" ~ WS*
+    WS* ~ "<" ~ WS* ~ email ~ ("," | "." | ";")? ~ WS* ~ ">" ~ WS*
 }
 
 mailbox_angle = {
-    WS* ~ "<" ~ mailbox ~ ("," | "." | ";")? ~ ">" ~ WS*
+    WS* ~ "<" ~ WS* ~ mailbox ~ ("," | "." | ";")? ~ WS* ~ ">" ~ WS*
 }
 
 malformed_comment_name = @{

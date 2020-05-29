@@ -39,7 +39,7 @@ fn eq() {
         ),
         concat!(
             r#""RFC822::Still a pain in 2018": "Example; Email: "#,
-            r#"Add@ress.es" <for@real.example.com>, "messy@example.net", Very"#,
+            r#"Add@ress.es" <        for@real.example.com>, "messy@example.net", Very"#,
             " (Invalid) Messy  <horrible@formatting.example.org>;",
         ),
         concat!(
@@ -61,12 +61,12 @@ fn eq() {
         "Undisclosed-Recipients: <>;",
         "<Undisclosed-Recipients: <>;>",
         "<Undisclosed-Recipients:;>",
-        "inventing@new.email.addresses.for.fun>, please@make.it <please@make.it>, stop@stop.com",
+        "inventing@new.email.addresses.for.fun>, please@make.it <please@make.it >, stop@stop.com",
         concat!(
             r#""I wish email would go away" <go@wa.y>; butitwont@foralong.time; "#,
             r#"It's really sad <imo@opinion.mine>"#
         ),
-        "Hello <hello@email.rofl>, <something@okokok.xxq;icant@any.more>, So Much <bad@stu.ff> ",
+        "''Hello'' <hello@email.rofl>, <something@okokok.xxq;icant@any.more>, So Much<>bad@stu.ff ",
         concat!(
             "<oneaddress@without.delimiter> <twoaddresses@without.delimiter>, ",
             "oneaddress@with.delimiter",
