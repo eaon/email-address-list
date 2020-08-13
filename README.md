@@ -54,7 +54,7 @@ let result = parse_address_list(
     )
 ).unwrap();
 
-assert!(result.deep_eq(&manua
+assert!(result.deep_eq(&manual));
 ```
 
 If you find examples of `email-address-list` failing, either by omitting
