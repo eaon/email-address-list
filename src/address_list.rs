@@ -33,13 +33,14 @@ pub trait Contactish {
     fn set_comment<T>(self, comment: T) -> Self
     where
         T: AsRef<str>;
-    fn as_contact(self) -> Contact;
+    fn to_contact(self) -> Contact;
 }
 
 /// For everything that has contacts
 pub trait Contactsish {
     fn len(&self) -> usize;
-    fn as_contacts(self) -> Contacts;
+    fn is_empty(&self) -> bool;
+    fn to_contacts(self) -> Contacts;
     fn add<C>(&mut self, contact: C)
     where
         C: Contactish;
@@ -83,7 +84,7 @@ impl Contactish for EmailContact {
         T: AsRef<str>,
     {
         let name = name.as_ref().trim();
-        if name != "" {
+        if !name.is_empty() {
             self.name = Some(name.into());
         }
         self
@@ -102,13 +103,13 @@ impl Contactish for EmailContact {
         T: AsRef<str>,
     {
         let comment = comment.as_ref();
-        if comment != "" {
+        if !comment.is_empty() {
             self.comment = Some(comment.into());
         }
         self
     }
 
-    fn as_contact(self) -> Contact {
+    fn to_contact(self) -> Contact {
         Contact::from(self)
     }
 }
@@ -131,7 +132,7 @@ impl DeepEq for EmailContact {
 impl fmt::Display for EmailContact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(n) = &self.name {
-            write!(f, "\"{}\" ", n.replace("\\", "\\\\").replace("\"", "\\\""))?;
+            write!(f, "\"{}\" ", n.replace('\\', "\\\\").replace('"', "\\\""))?;
             if let Some(c) = &self.comment {
                 write!(f, "({}) ", c)?;
             }
@@ -139,7 +140,7 @@ impl fmt::Display for EmailContact {
         write!(
             f,
             "<{}>",
-            self.email.replace("\\", "\\\\").replace("\"", "\\\""),
+            self.email.replace('\\', "\\\\").replace('"', "\\\""),
         )
     }
 }
@@ -193,7 +194,7 @@ impl Contactish for GarbageContact {
         self
     }
 
-    fn as_contact(self) -> Contact {
+    fn to_contact(self) -> Contact {
         Contact::from(self)
     }
 }
@@ -217,10 +218,7 @@ pub enum Contact {
 
 impl Contact {
     pub fn is_garbage(&self) -> bool {
-        match self {
-            Contact::Garbage(_) => true,
-            _ => false,
-        }
+        matches!(self, Contact::Garbage(_))
     }
 }
 
@@ -295,7 +293,7 @@ impl Contactish for Contact {
         }
     }
 
-    fn as_contact(self) -> Self {
+    fn to_contact(self) -> Self {
         self
     }
 }
@@ -415,7 +413,11 @@ impl Contactsish for Vec<Contact> {
         self.len()
     }
 
-    fn as_contacts(self) -> Contacts {
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
+
+    fn to_contacts(self) -> Contacts {
         Contacts::from(self)
     }
 
@@ -423,7 +425,7 @@ impl Contactsish for Vec<Contact> {
     where
         C: Contactish,
     {
-        self.push(contact.as_contact());
+        self.push(contact.to_contact());
     }
 
     fn contains(&self, contact: &Contact) -> bool {
@@ -436,7 +438,11 @@ impl Contactsish for Contacts {
         self.contacts.len()
     }
 
-    fn as_contacts(self) -> Contacts {
+    fn is_empty(&self) -> bool {
+        self.contacts.is_empty()
+    }
+
+    fn to_contacts(self) -> Contacts {
         self
     }
 
@@ -444,7 +450,7 @@ impl Contactsish for Contacts {
     where
         C: Contactish,
     {
-        self.contacts.push(contact.as_contact());
+        self.contacts.push(contact.to_contact());
     }
 
     fn contains(&self, contact: &Contact) -> bool {
@@ -455,7 +461,7 @@ impl Contactsish for Contacts {
 impl Deref for Contacts {
     type Target = [Contact];
 
-    fn deref<'a>(&'a self) -> &'a [Contact] {
+    fn deref(&self) -> &[Contact] {
         self.contacts.as_slice()
     }
 }
@@ -531,16 +537,17 @@ impl Group {
     where
         T: AsRef<str>,
     {
-        let mut new: Self = Default::default();
-        new.name = name.as_ref().into();
-        new
+        Self {
+            name: name.as_ref().into(),
+            ..Default::default()
+        }
     }
 
     pub fn set_contacts<T>(mut self, contacts: T) -> Self
     where
         T: Contactsish,
     {
-        self.contacts = contacts.as_contacts();
+        self.contacts = contacts.to_contacts();
         self
     }
 }
@@ -590,7 +597,11 @@ impl Contactsish for Group {
         self.contacts.len()
     }
 
-    fn as_contacts(self) -> Contacts {
+    fn is_empty(&self) -> bool {
+        self.contacts.is_empty()
+    }
+
+    fn to_contacts(self) -> Contacts {
         self.contacts
     }
 
@@ -598,7 +609,7 @@ impl Contactsish for Group {
     where
         C: Contactish,
     {
-        self.contacts.add(contact.as_contact());
+        self.contacts.add(contact.to_contact());
     }
 
     fn contains(&self, contact: &Contact) -> bool {
@@ -627,7 +638,7 @@ impl fmt::Display for Group {
         write!(
             f,
             "\"{}\": {};",
-            self.name.replace("\\", "\\\\").replace("\"", "\\\""),
+            self.name.replace('\\', "\\\\").replace('"', "\\\""),
             self.contacts
         )
     }
@@ -654,10 +665,7 @@ pub enum AddressList {
 impl AddressList {
     /// Check if this address list is a group
     pub fn is_group(&self) -> bool {
-        match self {
-            AddressList::Group(_) => true,
-            _ => false,
-        }
+        matches!(self, AddressList::Group(_))
     }
 
     /// Get the group name if it is a group
@@ -671,7 +679,7 @@ impl AddressList {
     /// Get the contacts regardless of our variant
     pub fn contacts(&self) -> &Contacts {
         match self {
-            AddressList::Contacts(c) => &c,
+            AddressList::Contacts(c) => c,
             AddressList::Group(g) => &g.contacts,
         }
     }
@@ -726,7 +734,7 @@ impl DeepEq for AddressList {
         match self {
             AddressList::Group(g) => {
                 if let AddressList::Group(o) = other {
-                    g.deep_eq(&o)
+                    g.deep_eq(o)
                 } else {
                     false
                 }
@@ -764,7 +772,14 @@ impl Contactsish for AddressList {
         }
     }
 
-    fn as_contacts(self) -> Contacts {
+    fn is_empty(&self) -> bool {
+        match self {
+            Self::Contacts(c) => c.is_empty(),
+            Self::Group(g) => g.contacts.is_empty(),
+        }
+    }
+
+    fn to_contacts(self) -> Contacts {
         match self {
             Self::Contacts(c) => c,
             Self::Group(g) => g.contacts,

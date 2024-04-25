@@ -4,20 +4,20 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum Error {
-    PestRuleError(pest::error::Error<Rule>),
+    PestRuleError(Box<pest::error::Error<Rule>>),
     UnexpectedError(String),
     Empty,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{:?}", self)
     }
 }
 
 impl From<pest::error::Error<Rule>> for Error {
     fn from(s: pest::error::Error<Rule>) -> Error {
-        Error::PestRuleError(s)
+        Error::PestRuleError(Box::new(s))
     }
 }
 

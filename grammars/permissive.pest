@@ -81,7 +81,7 @@ local = {
     (!("@" | "<" | ">" | ":" | "," | "'" | WS) ~ ANY)+
 }
 
-// XXX make sure we implement https://tools.ietf.org/html/rfc5894#page-9
+// TODO make sure we implement https://tools.ietf.org/html/rfc5894#page-9
 domain = {
     !("@" | "\\" | "[" | "]" | "<" | ">" | "(" | ")" | "$" | "#" | "%" | "^" |
       "," | "." | "\"" | "'" | ";" | "*" | "{" | "}" | "&" | "=" | "?" | "~" |

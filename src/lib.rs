@@ -32,6 +32,3 @@ pub use crate::address_list::*;
 
 mod parser;
 pub use crate::parser::{parse_address_list, parse_contact};
-
-#[cfg(test)]
-mod tests;

@@ -1,17 +1,16 @@
-use super::error::*;
-use super::*;
+use email_address_list::error::*;
+use email_address_list::*;
 use std::process::Command;
 
 #[test]
 fn big_list_of_naughty_strings() {
     let naughty = Command::new("curl")
-        .args(&["https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt"])
+        .args(["https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt"])
         .output()
-        .unwrap();
+        .expect("This test depends on curl and network connectivity");
 
     let mut body = String::from_utf8(naughty.stdout).unwrap();
-    let mut lines = body.as_mut_str().lines();
-    while let Some(line) = lines.next() {
+    for line in body.as_mut_str().lines() {
         println!("{}", line);
         match parse_address_list(&line) {
             Ok(a) => {
@@ -30,7 +29,7 @@ fn big_list_of_naughty_strings() {
 }
 
 #[test]
-fn eq() {
+fn equality() {
     let literals = [
         concat!(
             r#"Garbage:       enghraifft@example.org (Enw), "#,
@@ -160,11 +159,14 @@ fn eq() {
             _ => i - 3,
         };
         let mut other = parse_address_list(literals[i]).unwrap();
-        println!("    is == {:?}\nshould == {:?}\n", &address_list, &other);
-        assert!(address_list.deep_eq(&other));
+        assert!(
+            address_list.deep_eq(&other),
+            "    is == {:?}\nshould == {:?}\n",
+            &address_list,
+            &other
+        );
         assert_eq!(address_list, &other);
         other = parse_address_list(literals[j]).unwrap();
-        println!("!= {:?}", other);
-        assert!(address_list != &other);
+        assert!(address_list != &other, "!= {:?}", other);
     }
 }

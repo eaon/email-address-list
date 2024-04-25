@@ -1,25 +1,21 @@
 [package]
 name = "email-address-list"
-version = "0.2.5"
+version = "0.3.0"
 authors = ["eaon <eaon@posteo.net>"]
 description = "Pest based parser for address-lists in email headers like to/from/cc/etc."
-repository = "https://ghom.niij.org/eaon/email-address-list/"
+repository = "https://codeberg.org/eaon/email-address-list/"
 readme = "README.md"
 license = "GPL-3.0"
 keywords = ["email", "parser", "peg"]
 categories = ["parser-implementations", "email"]
-edition = "2018"
-
-[badges]
-appveyor = { repository = "eaon/email-address-list", service = "git", id = "c3ekor6vn5os34w5" }
-maintenance = { status = "actively-developed" }
+edition = "2021"
 
 [dependencies]
 lazy_static = "1"
 pest = "2"
 pest_derive = "2"
 regex = "1"
-mailparse = { version = "0.9", optional = true }
+mailparse = { version = "0.14", optional = true }
 
 [features]
 mailparse-conversions = ["mailparse"]

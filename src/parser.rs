@@ -42,7 +42,7 @@ fn parse_contact_pair(pair: Pair<'_, Rule>) -> Option<Result<Contact>> {
             Rule::comment => c = c.set_comment(inner.as_str()),
             Rule::garbage => {
                 let garbage = inner.as_str();
-                if garbage == "" {
+                if garbage.is_empty() {
                     return None;
                 }
                 return Some(Ok(GarbageContact::new(garbage).into()));
@@ -183,9 +183,9 @@ where
     /// Remove all common characters, the lengths of this output should be roughly equal for what
     /// we put in and what we plan to put out.
     fn normalise(input: &str) -> String {
-        (&[",", "\"", "'", "<", ">"]
+        [",", "\"", "'", "<", ">"]
             .iter()
-            .fold(input.to_string(), |o, p| o.replace(p, "")))
+            .fold(input.to_string(), |o, p| o.replace(p, ""))
             .replace(char::is_whitespace, "")
     }
 
@@ -203,18 +203,17 @@ where
 
     /// Break apart undelimited addresses if they are present and put them in the appropriate place
     /// of the list
-    // XXX add a way to fish out both addresses from something like:
+    // TODO add a way to fish out both addresses from something like:
     // one@example.org Firstname Surname <two@example.org>
     fn expand_undelimited(mut input: Vec<String>) -> Vec<String> {
         let mut output = <Vec<String>>::new();
-        let mut r = 0;
-        for i in 0..input.len() {
+        for (r, i) in (0..input.len()).enumerate() {
             let j = &input[i - r];
             if j.contains('>') {
                 for s in j.split('>') {
                     if s.contains('<') {
                         output.push(format!("{}>", s));
-                    } else if s == "" {
+                    } else if s.is_empty() {
                         // don't do anything with empty bits
                     } else {
                         output.push(s.into());
@@ -224,13 +223,12 @@ where
             } else {
                 output.push(input.remove(i - r));
             }
-            r += 1;
         }
         output
     }
 
     fn add_absent_contacts(input: &[String], output: &mut AddressList) -> Result<()> {
-        for contact in input.iter().map(|c| parse_contact(c)) {
+        for contact in input.iter().map(parse_contact) {
             let contact = contact?;
             if let Contact::Email(_) = contact {
                 if !output.contains(&contact) {
@@ -260,7 +258,7 @@ where
                 });
                 let mut sc_output = parse_pairs(Parser::parse(
                     Rule::address_list,
-                    &sc_input.trim_end_matches(','),
+                    sc_input.trim_end_matches(','),
                 )?)?;
                 // If the semi-colon delimited output is bigger than the regular one we're likely
                 // a completely semi-colon separated list, however, we're still trying to find
